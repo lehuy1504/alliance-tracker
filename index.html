@@ -981,6 +981,11 @@
       if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
       return Number(n).toLocaleString();
     };
+
+    const fmtNumOther = n => {
+      if (!n || isNaN(n)) return '0';
+      return Number(n).toLocaleString('de-DE');
+    };
     const fmtDate = k => { if (!k) return ''; const [y, m, d] = k.split('-'); return `${d}/${m}/${y}`; };
 
     window.showTab = name => {
@@ -1152,9 +1157,9 @@
       document.getElementById('pModalName').textContent = r.name;
       document.getElementById('pModalSub').textContent = `[${r.alliance}] · Server ${curServer} · ${fmtDate(curDate)}`;
       const secs = [
-        { t: '⚔️ Chiến Đấu', rows: [['ID', r.id], ['Công Trạng', fmtNum(r.merit)], ['Tỉ Lệ CT', r.meritRate + '%'], ['Lực Chiến', fmtNum(r.power)], ['Lực Chiến Max', fmtNum(r.powerMax)], ['Tiêu Diệt', fmtNum(r.kill)], ['Tử Trận', fmtNum(r.dead)], ['Chữa Lính', fmtNum(r.heal)]] },
-        { t: '💰 Tiêu Thụ', rows: [['Vàng', fmtNum(r.goldSpend)], ['Gỗ', fmtNum(r.woodSpend)], ['Đá', fmtNum(r.stoneSpend)], ['Mana', fmtNum(r.manaSpend)], ['Gem', fmtNum(r.gemSpend)]] },
-        { t: '🌾 Thu Thập', rows: [['Vàng', fmtNum(r.goldGather)], ['Gỗ', fmtNum(r.woodGather)], ['Đá', fmtNum(r.stoneGather)], ['Mana', fmtNum(r.manaGather)], ['Gem', fmtNum(r.gemGather)]] },
+        { t: '⚔️ Chiến Đấu', rows: [['ID', r.id], ['Công Trạng', fmtNumOther(r.merit)], ['Tỉ Lệ CT', r.meritRate + '%'], ['Lực Chiến', fmtNumOther(r.power)], ['Lực Chiến Max', fmtNumOther(r.powerMax)], ['Tiêu Diệt', fmtNumOther(r.kill)], ['Tử Trận', fmtNumOther(r.dead)], ['Chữa Lính', fmtNumOther(r.heal)]] },
+        { t: '💰 Tiêu Thụ', rows: [['Vàng', fmtNumOther(r.goldSpend)], ['Gỗ', fmtNumOther(r.woodSpend)], ['Đá', fmtNumOther(r.stoneSpend)], ['Mana', fmtNumOther(r.manaSpend)], ['Gem', fmtNumOther(r.gemSpend)]] },
+        { t: '🌾 Thu Thập', rows: [['Vàng', fmtNumOther(r.goldGather)], ['Gỗ', fmtNumOther(r.woodGather)], ['Đá', fmtNumOther(r.stoneGather)], ['Mana', fmtNumOther(r.manaGather)], ['Gem', fmtNumOther(r.gemGather)]] },
       ];
       document.getElementById('pModalBody').innerHTML = secs.map(sec => `<div class="detail-sec"><div class="detail-sec-title">${sec.t}</div>${sec.rows.map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}</div>`).join('');
       document.getElementById('playerModal').classList.add('open');
