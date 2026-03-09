@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ Alliance Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #f0b429; --gold-dark: #c8830a; --gold-light: #ffd97d;
+  --bg: #0a0c10; --bg2: #111420; --bg3: #1a1f2e; --bg4: #222840;
+  --border: #2a3050; --border-gold: rgba(240,180,41,0.3);
+  --text: #d4deff; --text-dim: #7888aa;
+  --red: #ff4455; --green: #3dffa0; --blue: #4fa8ff; --purple: #b06aff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; font-size: 15px; min-height: 100vh; overflow-x: hidden; }
+body::before { content:''; position:fixed; inset:0; z-index:0; background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(240,180,41,0.07) 0%, transparent 70%), radial-gradient(ellipse 40% 30% at 80% 80%, rgba(79,168,255,0.05) 0%, transparent 60%); pointer-events:none; }
+.app { position:relative; z-index:1; max-width:1380px; margin:0 auto; padding:0 16px 40px; }
+
+/* HEADER */
+header { text-align:center; padding:28px 0 18px; border-bottom:1px solid var(--border-gold); margin-bottom:24px; position:relative; }
+header::after { content:''; position:absolute; bottom:-1px; left:50%; transform:translateX(-50%); width:200px; height:2px; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+.logo { font-family:'Cinzel',serif; font-size:clamp(1.5rem,4vw,2.1rem); font-weight:900; background:linear-gradient(135deg,#ffd97d,#f0b429,#c8830a); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:4px; }
+.subtitle { color:var(--text-dim); font-size:0.78rem; letter-spacing:5px; text-transform:uppercase; margin-top:3px; }
+.header-top { position:absolute; top:16px; right:0; display:flex; align-items:center; gap:8px; }
+
+/* TABS */
+.tabs { display:flex; gap:4px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:4px; margin-bottom:20px; flex-wrap:wrap; }
+.tab-btn { padding:7px 18px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--text-dim); font-family:'Rajdhani',sans-serif; font-size:0.92rem; font-weight:600; cursor:pointer; transition:all 0.2s; letter-spacing:1px; }
+.tab-btn:hover { color:var(--text); background:var(--bg3); }
+.tab-btn.active { background:rgba(240,180,41,0.15); color:var(--gold); border-color:var(--border-gold); }
+
+/* PANEL */
+.panel { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:16px; }
+.panel-title { font-family:'Cinzel',serif; font-size:0.95rem; color:var(--gold); letter-spacing:2px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.panel-title::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border-gold),transparent); }
+
+/* BUTTONS */
+.btn { padding:8px 20px; border:1px solid transparent; border-radius:8px; font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-weight:700; cursor:pointer; transition:all 0.2s; letter-spacing:1px; }
+.btn-primary { background:linear-gradient(135deg,var(--gold),var(--gold-dark)); color:#0a0c10; border:none; }
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 18px rgba(240,180,41,0.3); }
+.btn-danger { background:rgba(255,68,85,0.12); color:var(--red); border-color:rgba(255,68,85,0.3); }
+.btn-danger:hover { background:rgba(255,68,85,0.22); }
+.btn-ghost { background:var(--bg3); color:var(--text); border-color:var(--border); }
+.btn-ghost:hover { border-color:var(--gold); color:var(--gold); }
+.btn-admin { background:rgba(61,255,160,0.08); color:var(--green); border-color:rgba(61,255,160,0.3); padding:5px 13px; font-size:0.8rem; }
+
+/* INPUTS */
+textarea, input[type=text], input[type=password], select {
+  width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:8px; color:var(--text);
+  font-family:'Rajdhani',sans-serif; font-size:0.9rem; padding:9px 12px; outline:none; transition:border-color 0.2s;
+}
+textarea { resize:vertical; min-height:170px; }
+textarea:focus, input:focus { border-color:var(--gold); }
+select { cursor:pointer; }
+select option { background:var(--bg3); }
+
+/* STATUS */
+.status { padding:9px 14px; border-radius:8px; font-weight:600; margin-top:10px; font-size:0.9rem; display:none; }
+.status.show { display:block; }
+.status.success { background:rgba(61,255,160,0.1); color:var(--green); border:1px solid rgba(61,255,160,0.2); }
+.status.error   { background:rgba(255,68,85,0.1);  color:var(--red);   border:1px solid rgba(255,68,85,0.2); }
+.status.info    { background:rgba(79,168,255,0.1);  color:var(--blue);  border:1px solid rgba(79,168,255,0.2); }
+
+/* SERVER GRID */
+.server-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:10px; }
+.server-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:13px 15px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
+.server-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--gold),transparent); opacity:0; transition:opacity 0.2s; }
+.server-card:hover, .server-card.active { border-color:var(--border-gold); background:var(--bg4); box-shadow:0 0 18px rgba(240,180,41,0.1); }
+.server-card:hover::before, .server-card.active::before { opacity:1; }
+.server-num { font-family:'Cinzel',serif; font-size:1.3rem; font-weight:700; color:var(--gold); }
+.server-sub { font-size:0.72rem; color:var(--text-dim); margin-top:2px; }
+.server-days { font-size:0.7rem; color:var(--blue); margin-top:5px; }
+
+/* DATE CHIPS */
+.date-list { display:flex; gap:7px; flex-wrap:wrap; }
+.chip { padding:5px 13px; background:var(--bg3); border:1px solid var(--border); border-radius:20px; font-size:0.83rem; cursor:pointer; transition:all 0.2s; color:var(--text-dim); display:flex; align-items:center; gap:5px; }
+.chip:hover { border-color:var(--gold); color:var(--gold); }
+.chip.active { background:rgba(240,180,41,0.15); border-color:var(--gold); color:var(--gold); }
+.chip-del { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:11px; padding:0 2px; line-height:1; }
+.chip-del:hover { color:var(--red); }
+
+/* STAT CARDS */
+.stats-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.stat-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:13px 15px; flex:1 1 140px; position:relative; }
+.stat-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; border-radius:0 0 10px 10px; background:var(--accent,var(--gold)); opacity:0.5; }
+.stat-label { font-size:0.71rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); }
+.stat-val { font-family:'Cinzel',serif; font-size:1.25rem; font-weight:700; color:var(--accent,var(--gold)); margin-top:3px; }
+.stat-sub { font-size:0.74rem; color:var(--text-dim); margin-top:2px; }
+
+/* TABLE */
+.table-wrap { overflow-x:auto; }
+table { width:100%; min-width:800px; border-collapse:collapse; font-size:0.87rem; }
+thead tr { background:var(--bg3); border-bottom:1px solid var(--border-gold); }
+th { padding:10px 12px; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.75rem; letter-spacing:1px; text-transform:uppercase; color:var(--text-dim); white-space:nowrap; cursor:pointer; user-select:none; transition:color 0.2s; }
+th:hover { color:var(--gold); }
+th.sorted { color:var(--gold); }
+th.left { text-align:left; }
+tbody tr { border-bottom:1px solid rgba(42,48,80,0.4); transition:background 0.15s; }
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background:rgba(240,180,41,0.04); }
+td { padding:9px 12px; text-align:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
+td.left { text-align:left; }
+td.rank { font-family:'Cinzel',serif; font-weight:700; color:var(--text-dim); }
+td.rank.r1 { color:#ffd700; } td.rank.r2 { color:#c0c0c0; } td.rank.r3 { color:#cd7f32; }
+td.name { font-weight:600; color:var(--gold-light); cursor:pointer; }
+td.name:hover { color:var(--gold); text-decoration:underline; }
+td.ally { color:var(--blue); font-weight:600; font-size:0.81rem; }
+td.rate { color:var(--purple); }
+
+/* COMPARE CARDS */
+.cmp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:14px; }
+.cmp-card { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px 15px; }
+.cmp-title { font-family:'Cinzel',serif; font-size:0.82rem; color:var(--gold); margin-bottom:10px; }
+.cmp-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(42,48,80,0.3); font-size:0.87rem; }
+.cmp-row:last-child { border-bottom:none; }
+.cmp-key { color:var(--text-dim); }
+.cmp-val { font-weight:700; }
+.pos { color:var(--green); } .neg { color:var(--red); }
+
+/* MODAL */
+.modal-overlay { display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--border-gold); border-radius:14px; width:90%; max-width:520px; max-height:88vh; overflow-y:auto; box-shadow:0 20px 80px rgba(0,0,0,0.7); animation:mIn 0.2s ease; }
+@keyframes mIn { from { opacity:0; transform:scale(0.95) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.modal-header { padding:18px 22px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-start; }
+.modal-body { padding:16px 22px 20px; }
+.detail-sec { margin-bottom:16px; }
+.detail-sec-title { font-size:0.7rem; text-transform:uppercase; letter-spacing:2px; color:var(--text-dim); padding-bottom:6px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.detail-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid rgba(42,48,80,0.25); font-size:0.9rem; }
+.detail-row:last-child { border-bottom:none; }
+.detail-key { color:var(--text-dim); }
+.detail-val { font-weight:700; }
+
+/* SEARCH DROPDOWN */
+.search-wrap { position:relative; }
+.search-input { width:210px !important; padding:7px 12px !important; font-size:0.88rem !important; }
+.search-drop { display:none; position:absolute; top:calc(100% + 5px); left:0; right:0; background:var(--bg3); border:1px solid var(--border-gold); border-radius:10px; z-index:200; max-height:280px; overflow-y:auto; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
+.search-drop.open { display:block; }
+.search-item { padding:9px 13px; cursor:pointer; border-bottom:1px solid rgba(42,48,80,0.35); transition:background 0.15s; }
+.search-item:last-child { border-bottom:none; }
+.search-item:hover { background:rgba(240,180,41,0.07); }
+.search-name { font-weight:700; color:var(--gold-light); font-size:0.9rem; }
+.search-sub { font-size:0.76rem; color:var(--text-dim); margin-top:1px; }
+.search-empty { padding:14px; text-align:center; color:var(--text-dim); font-size:0.85rem; }
+
+/* MISC */
+.flex-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.section-label { font-size:0.71rem; text-transform:uppercase; letter-spacing:2px; color:var(--text-dim); margin-bottom:10px; }
+.empty { text-align:center; padding:40px; color:var(--text-dim); }
+.saving-badge { font-size:0.75rem; color:var(--text-dim); }
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* MANAGE */
+.manage-server { margin-bottom:14px; padding:16px; background:var(--bg3); border:1px solid var(--border); border-radius:10px; }
+
+@media (max-width:600px) {
+  .logo { font-size:1.4rem; }
+  .app { padding:0 10px 30px; }
+  .panel { padding:14px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">⚔ ALLIANCE TRACKER</div>
+    <div class="subtitle">Game Server Intelligence Dashboard</div>
+    <div class="header-top">
+      <span id="savingBadge" class="saving-badge" style="display:none">💾 Đang lưu...</span>
+      <div id="adminArea"></div>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabBar"></div>
+
+  <!-- LOADING -->
+  <div id="loadingScreen" class="panel" style="text-align:center;padding:50px">
+    <div style="font-size:2rem;margin-bottom:10px">⏳</div>
+    <div style="color:var(--text-dim)">Đang kết nối Firebase...</div>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  <div id="tab-view"    class="tab-content" style="display:none"></div>
+  <div id="tab-compare" class="tab-content" style="display:none"></div>
+  <div id="tab-import"  class="tab-content" style="display:none"></div>
+  <div id="tab-manage"  class="tab-content" style="display:none"></div>
+
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="playerModal" onclick="closePlayerModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--gold)" id="pModalName"></div>
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-top:3px" id="pModalSub"></div>
+      </div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.85rem" onclick="document.getElementById('playerModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="pModalBody"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="adminModal" onclick="closeAdminModal(event)">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold)">🔐 Đăng Nhập Admin</div>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.85rem" onclick="document.getElementById('adminModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="password" id="adminPwInput" placeholder="Nhập mật khẩu..." onkeydown="if(event.key==='Enter')tryAdminLogin()">
+      <div id="adminPwErr" style="color:var(--red);font-size:0.82rem;margin-top:6px;display:none">Sai mật khẩu!</div>
+      <div class="flex-row" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="tryAdminLogin()">Đăng Nhập</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('adminModal').classList.remove('open')">Hủy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const ADMIN_PASSWORD = "Huy@1504";
+const firebaseConfig = {
+  apiKey: "AIzaSyCp6L4C-4KhZNm67VpC3hu7ws_n2C5XTfA",
+  authDomain: "alliance-tracker-ddc87.firebaseapp.com",
+  databaseURL: "https://alliance-tracker-ddc87-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "alliance-tracker-ddc87",
+  storageBucket: "alliance-tracker-ddc87.firebasestorage.app",
+  messagingSenderId: "910735026600",
+  appId: "1:910735026600:web:d2199d026f1e476cb4d59d"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let DATA = {};        // full DB from Firebase
+let isAdmin = false;
+let curServer = null;
+let curDate = null;
+let activeTab = 'view';
+let sortCol = 'merit';
+
+// ══════════════════════════════════════════
+// FIREBASE LISTENER
+// ══════════════════════════════════════════
+onValue(ref(db, 'servers'), (snap) => {
+  DATA = snap.val() || {};
+  document.getElementById('loadingScreen').style.display = 'none';
+  renderAll();
+});
+
+async function saveData(path, value) {
+  setSaving(true);
+  try {
+    await set(ref(db, path), value);
+  } catch(e) { alert('Lỗi lưu: ' + e.message); }
+  setSaving(false);
+}
+
+async function removeData(path) {
+  setSaving(true);
+  try { await remove(ref(db, path)); } catch(e) { alert('Lỗi xóa: ' + e.message); }
+  setSaving(false);
+}
+
+function setSaving(v) {
+  document.getElementById('savingBadge').style.display = v ? '' : 'none';
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function fmtNum(n) {
+  if (!n || isNaN(n)) return '0';
+  if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return Number(n).toLocaleString();
+}
+function fmtDate(k) {
+  if (!k) return '';
+  const [y,m,d] = k.split('-');
+  return `${d}/${m}/${y}`;
+}
+function panelTitle(t) { return `<div class="panel-title">${t}</div>`; }
+function showTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('tab-' + name);
+  if (el) el.style.display = '';
+  document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); });
+  renderTab(name);
+}
+window.showTab = showTab;
+
+// ══════════════════════════════════════════
+// PARSER
+// ══════════════════════════════════════════
+function parseData(raw) {
+  const sm = raw.match(/Thông tin server[:\s]+(\d+)/i);
+  if (!sm) throw new Error('Không tìm thấy số server');
+  const server = sm[1];
+  const dm = raw.match(/Dữ liệu được lấy lúc[:\s]+(\d+)\/(\d+)\/(\d+)/i);
+  if (!dm) throw new Error('Không tìm thấy ngày');
+  const dateKey = `${dm[3]}-${dm[2].padStart(2,'0')}-${dm[1].padStart(2,'0')}`;
+  const rows = [];
+  const re = /\{([^}]+)\}/g; let m;
+  while ((m = re.exec(raw)) !== null) {
+    const p = m[1].split(',').map(s => s.trim().replace(/^"|"$/g,''));
+    if (p.length < 20) continue;
+    const n = i => { const x = parseFloat(p[i].replace(/[^0-9.-]/g,'')); return isNaN(x)?0:x; };
+    const s = i => p[i].replace(/"/g,'').trim();
+    rows.push({ id:s(0), name:s(1), alliance:s(2), merit:n(3), power:n(4), powerMax:n(5), meritRate:n(6), dead:n(7), heal:n(8), kill:n(9), goldSpend:n(10), woodSpend:n(11), stoneSpend:n(12), manaSpend:n(13), gemSpend:n(14), goldGather:n(15), woodGather:n(16), stoneGather:n(17), manaGather:n(18), gemGather:n(19) });
+  }
+  if (!rows.length) throw new Error('Không tìm thấy dữ liệu người chơi');
+  return { server, dateKey, rows };
+}
+
+// ══════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════
+function renderAll() {
+  renderTabBar();
+  renderAdminArea();
+  renderTab(activeTab);
+}
+
+function renderTabBar() {
+  const tabs = isAdmin
+    ? [['view','📊 Xem Dữ Liệu'],['compare','🔄 So Sánh'],['import','📥 Nhập Dữ Liệu'],['manage','⚙️ Quản Lý']]
+    : [['view','📊 Xem Dữ Liệu'],['compare','🔄 So Sánh']];
+  document.getElementById('tabBar').innerHTML = tabs.map(([k,l]) =>
+    `<button class="tab-btn ${activeTab===k?'active':''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`
+  ).join('');
+}
+
+function renderAdminArea() {
+  document.getElementById('adminArea').innerHTML = isAdmin
+    ? `<button class="btn btn-admin" onclick="logoutAdmin()">🔓 Admin · Thoát</button>`
+    : `<button class="btn btn-ghost" style="padding:5px 13px;font-size:0.8rem" onclick="openAdminModal()">🔒 Admin</button>`;
+}
+
+function renderTab(name) {
+  if (name === 'view')    renderView();
+  if (name === 'compare') renderCompare();
+  if (name === 'import' && isAdmin)  renderImport();
+  if (name === 'manage' && isAdmin)  renderManage();
+}
+
+// ══════════════════════════════════════════
+// TAB: VIEW
+// ══════════════════════════════════════════
+function renderView() {
+  const servers = Object.keys(DATA).sort((a,b)=>+a-+b);
+  if (!curServer && servers.length) curServer = servers[0];
+  if (curServer && DATA[curServer]) {
+    const dates = Object.keys(DATA[curServer]).sort();
+    if (!curDate || !DATA[curServer][curDate]) curDate = dates[dates.length-1];
+  }
+
+  const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
+  const dates = curServer && DATA[curServer] ? Object.keys(DATA[curServer]).sort().reverse() : [];
+
+  let html = `<div class="panel"><div class="panel-title">🗺 Chọn Server</div>`;
+  if (!servers.length) {
+    html += `<div class="empty">Chưa có dữ liệu — Admin cần nhập trước</div>`;
+  } else {
+    html += `<div class="server-grid">` + servers.map(s => `
+      <div class="server-card ${s===curServer?'active':''}" onclick="selectServer('${s}')">
+        <div class="server-num">S${s}</div>
+        <div class="server-sub">Server ${s}</div>
+        <div class="server-days">📅 ${Object.keys(DATA[s]).length} ngày</div>
+      </div>`).join('') + `</div>`;
+  }
+  html += `</div>`;
+
+  if (curServer && dates.length) {
+    // Date chips
+    html += `<div class="panel"><div class="panel-title">📅 Chọn Ngày</div><div class="date-list">`;
+    html += dates.map(d => `
+      <div class="chip ${d===curDate?'active':''}" onclick="selectDate('${d}')">
+        📅 ${fmtDate(d)}
+        ${isAdmin ? `<button class="chip-del" onclick="event.stopPropagation();deleteDate('${curServer}','${d}')">✕</button>` : ''}
+      </div>`).join('');
+    html += `</div></div>`;
+
+    // Stats
+    if (rows.length) {
+      const tMerit  = rows.reduce((s,r)=>s+r.merit,0);
+      const tKill   = rows.reduce((s,r)=>s+r.kill,0);
+      const tHeal   = rows.reduce((s,r)=>s+r.heal,0);
+      const tMana   = rows.reduce((s,r)=>s+r.manaSpend,0);
+      const allies  = [...new Set(rows.map(r=>r.alliance))];
+      html += `<div class="stats-row">
+        <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">Người Chơi</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${allies.length} liên minh</div></div>
+        <div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">Tổng Công Trạng</div><div class="stat-val">${fmtNum(tMerit)}</div></div>
+        <div class="stat-card" style="--accent:var(--red)"><div class="stat-label">Tổng Tiêu Diệt</div><div class="stat-val">${fmtNum(tKill)}</div></div>
+        <div class="stat-card" style="--accent:var(--green)"><div class="stat-label">Tổng Chữa Lính</div><div class="stat-val">${fmtNum(tHeal)}</div></div>
+        <div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">Tổng Tiêu Mana</div><div class="stat-val">${fmtNum(tMana)}</div></div>
+      </div>`;
+    }
+
+    // Table
+    const cols = [
+      {k:'merit',l:'Công Trạng'},{k:'meritRate',l:'Tỉ Lệ CT'},{k:'power',l:'Lực Chiến'},
+      {k:'kill',l:'Tiêu Diệt'},{k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},
+      {k:'manaSpend',l:'Tiêu Mana'},{k:'manaGather',l:'Thu Mana'}
+    ];
+    const sorted = [...rows].sort((a,b)=>b[sortCol]-a[sortCol]);
+
+    html += `<div class="panel" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="panel-title" style="margin:0">📊 Bảng Xếp Hạng</div>
+        <div class="flex-row">
+          <div class="search-wrap">
+            <input class="search-input" type="text" id="searchInput" placeholder="🔍 Tìm người chơi..." oninput="onSearch(this.value)" autocomplete="off">
+            <div class="search-drop" id="searchDrop"></div>
+          </div>
+          <select onchange="setSortColFn(this.value)" style="width:auto">
+            ${cols.map(c=>`<option value="${c.k}" ${sortCol===c.k?'selected':''}>${c.l}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:42px">#</th>
+            <th class="left" style="min-width:160px">Tên</th>
+            <th class="left" style="width:85px">Liên Minh</th>
+            ${cols.map(c=>`<th class="${sortCol===c.k?'sorted':''}" onclick="setSortColFn('${c.k}')" style="width:105px">${c.l} ${sortCol===c.k?'↓':'↕'}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${sorted.map((r,i)=>{
+              const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+              const rc = i===0?'r1':i===1?'r2':i===2?'r3':'';
+              return `<tr>
+                <td class="rank ${rc}">${medal}</td>
+                <td class="left name" onclick="showPlayerDetail('${r.id}')">${r.name}</td>
+                <td class="left ally">[${r.alliance}]</td>
+                <td>${fmtNum(r.merit)}</td>
+                <td class="rate">${r.meritRate}%</td>
+                <td>${fmtNum(r.power)}</td>
+                <td>${fmtNum(r.kill)}</td>
+                <td>${fmtNum(r.dead)}</td>
+                <td>${fmtNum(r.heal)}</td>
+                <td>${fmtNum(r.manaSpend)}</td>
+                <td>${fmtNum(r.manaGather)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('tab-view').innerHTML = html;
+
+  // Re-attach search close listener
+  document.addEventListener('click', handleSearchClose);
+}
+
+function selectServer(s) { curServer = s; curDate = null; renderView(); }
+function selectDate(d) { curDate = d; renderView(); }
+function setSortColFn(col) { sortCol = col; renderView(); }
+window.selectServer = selectServer;
+window.selectDate = selectDate;
+window.setSortColFn = setSortColFn;
+
+// ── SEARCH ──
+function onSearch(q) {
+  const drop = document.getElementById('searchDrop');
+  if (!drop) return;
+  if (!q.trim()) { drop.classList.remove('open'); return; }
+  const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
+  const lower = q.toLowerCase();
+  const matches = rows.filter(r => r.name.toLowerCase().includes(lower) || r.alliance.toLowerCase().includes(lower) || r.id.toString().includes(lower)).slice(0,8);
+  drop.innerHTML = matches.length
+    ? matches.map(r=>`<div class="search-item" onclick="showPlayerDetail('${r.id}');clearSearch()"><div class="search-name">${r.name}</div><div class="search-sub">[${r.alliance}] · CT: ${fmtNum(r.merit)} · LC: ${fmtNum(r.power)}</div></div>`).join('')
+    : `<div class="search-empty">Không tìm thấy</div>`;
+  drop.classList.add('open');
+}
+function clearSearch() {
+  const inp = document.getElementById('searchInput');
+  const drop = document.getElementById('searchDrop');
+  if (inp) inp.value = '';
+  if (drop) drop.classList.remove('open');
+}
+function handleSearchClose(e) {
+  if (!e.target.closest('.search-wrap')) {
+    const drop = document.getElementById('searchDrop');
+    if (drop) drop.classList.remove('open');
+  }
+}
+window.onSearch = onSearch;
+window.clearSearch = clearSearch;
+
+// ── PLAYER DETAIL ──
+function showPlayerDetail(id) {
+  const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
+  const r = rows.find(x => x.id == id);
+  if (!r) return;
+  document.getElementById('pModalName').textContent = r.name;
+  document.getElementById('pModalSub').textContent = `[${r.alliance}] · Server ${curServer} · ${fmtDate(curDate)}`;
+  const secs = [
+    { t:'⚔️ Chiến Đấu', rows:[['ID',r.id],['Công Trạng',fmtNum(r.merit)],['Tỉ Lệ Công Trạng',r.meritRate+'%'],['Lực Chiến Hiện Tại',fmtNum(r.power)],['Lực Chiến Cao Nhất',fmtNum(r.powerMax)],['Tiêu Diệt',fmtNum(r.kill)],['Tử Trận',fmtNum(r.dead)],['Chữa Lính',fmtNum(r.heal)]] },
+    { t:'💰 Tiêu Thụ Tài Nguyên', rows:[['Vàng',fmtNum(r.goldSpend)],['Gỗ',fmtNum(r.woodSpend)],['Đá',fmtNum(r.stoneSpend)],['Mana',fmtNum(r.manaSpend)],['Gem',fmtNum(r.gemSpend)]] },
+    { t:'🌾 Thu Thập Tài Nguyên', rows:[['Vàng',fmtNum(r.goldGather)],['Gỗ',fmtNum(r.woodGather)],['Đá',fmtNum(r.stoneGather)],['Mana',fmtNum(r.manaGather)],['Gem',fmtNum(r.gemGather)]] },
+  ];
+  document.getElementById('pModalBody').innerHTML = secs.map(sec=>`
+    <div class="detail-sec">
+      <div class="detail-sec-title">${sec.t}</div>
+      ${sec.rows.map(([k,v])=>`<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}
+    </div>`).join('');
+  document.getElementById('playerModal').classList.add('open');
+}
+function closePlayerModal(e) { if (e.target === document.getElementById('playerModal')) document.getElementById('playerModal').classList.remove('open'); }
+window.showPlayerDetail = showPlayerDetail;
+window.closePlayerModal = closePlayerModal;
+
+// ══════════════════════════════════════════
+// TAB: COMPARE
+// ══════════════════════════════════════════
+function renderCompare() {
+  const servers = Object.keys(DATA).sort((a,b)=>+a-+b);
+  if (!servers.length) {
+    document.getElementById('tab-compare').innerHTML = `<div class="panel empty">Chưa có dữ liệu</div>`;
+    return;
+  }
+  const cSrv = curServer || servers[0];
+  const dates = DATA[cSrv] ? Object.keys(DATA[cSrv]).sort() : [];
+  const d1 = dates.length >= 2 ? dates[dates.length-2] : dates[0] || '';
+  const d2 = dates.length >= 1 ? dates[dates.length-1] : '';
+
+  let html = `<div class="panel"><div class="panel-title">🔄 So Sánh Giữa Hai Ngày</div>
+    <div class="flex-row" style="margin-bottom:16px">
+      <div><div class="section-label">Server</div>
+        <select id="cmpSrv" onchange="renderCmpResult()" style="width:auto">
+          ${servers.map(s=>`<option value="${s}" ${s===cSrv?'selected':''}>${'Server '+s}</option>`).join('')}
+        </select>
+      </div>
+      <div><div class="section-label">Ngày Trước</div>
+        <select id="cmpD1" onchange="renderCmpResult()" style="width:auto">
+          ${dates.map(d=>`<option value="${d}" ${d===d1?'selected':''}>${fmtDate(d)}</option>`).join('')}
+        </select>
+      </div>
+      <div><div class="section-label">Ngày Sau</div>
+        <select id="cmpD2" onchange="renderCmpResult()" style="width:auto">
+          ${dates.map(d=>`<option value="${d}" ${d===d2?'selected':''}>${fmtDate(d)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div id="cmpResult"></div>
+  </div>`;
+
+  document.getElementById('tab-compare').innerHTML = html;
+  renderCmpResult();
+
+  // Update dates when server changes
+  document.getElementById('cmpSrv').addEventListener('change', function() {
+    const s = this.value;
+    const ds = DATA[s] ? Object.keys(DATA[s]).sort() : [];
+    const opts = ds.map(d=>`<option value="${d}">${fmtDate(d)}</option>`).join('');
+    document.getElementById('cmpD1').innerHTML = opts;
+    document.getElementById('cmpD2').innerHTML = opts;
+    if (ds.length >= 2) { document.getElementById('cmpD1').value = ds[ds.length-2]; document.getElementById('cmpD2').value = ds[ds.length-1]; }
+    renderCmpResult();
+  });
+}
+
+function renderCmpResult() {
+  const el = document.getElementById('cmpResult'); if (!el) return;
+  const srv = document.getElementById('cmpSrv')?.value;
+  const d1  = document.getElementById('cmpD1')?.value;
+  const d2  = document.getElementById('cmpD2')?.value;
+  if (!srv || !d1 || !d2) return;
+  if (d1 === d2) { el.innerHTML = `<div class="status info show">Vui lòng chọn 2 ngày khác nhau</div>`; return; }
+
+  const rows1 = DATA[srv]?.[d1] || [];
+  const rows2 = DATA[srv]?.[d2] || [];
+  const map1 = Object.fromEntries(rows1.map(r=>[r.id,r]));
+  const map2 = Object.fromEntries(rows2.map(r=>[r.id,r]));
+  const allIds = [...new Set([...Object.keys(map1),...Object.keys(map2)])];
+
+  const metrics = [
+    {k:'merit',l:'Công Trạng'},{k:'power',l:'Lực Chiến'},{k:'kill',l:'Tiêu Diệt'},
+    {k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},{k:'manaSpend',l:'Tiêu Mana'},{k:'manaGather',l:'Thu Mana'}
+  ];
+  const sum1 = Object.fromEntries(metrics.map(m=>[m.k, rows1.reduce((s,r)=>s+r[m.k],0)]));
+  const sum2 = Object.fromEntries(metrics.map(m=>[m.k, rows2.reduce((s,r)=>s+r[m.k],0)]));
+
+  let html = `<div class="flex-row" style="margin-bottom:14px">
+    <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:0.83rem">
+      📅 <span style="color:var(--text-dim)">Trước:</span> <b>${fmtDate(d1)}</b> — ${rows1.length} người
+    </div>
+    <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;font-size:0.83rem">
+      📅 <span style="color:var(--text-dim)">Sau:</span> <b style="color:var(--gold)">${fmtDate(d2)}</b> — ${rows2.length} người
+    </div>
+  </div>
+  <div class="section-label">Thay Đổi Tổng Cộng</div>
+  <div class="cmp-grid">`;
+
+  metrics.forEach(m => {
+    const diff = sum2[m.k] - sum1[m.k];
+    const pct = sum1[m.k] > 0 ? ((diff/sum1[m.k])*100).toFixed(1) : '—';
+    const pos = diff >= 0;
+    html += `<div class="cmp-card">
+      <div class="cmp-title">${m.l}</div>
+      <div class="cmp-row"><span class="cmp-key">Ngày trước</span><span class="cmp-val">${fmtNum(sum1[m.k])}</span></div>
+      <div class="cmp-row"><span class="cmp-key">Ngày sau</span><span class="cmp-val">${fmtNum(sum2[m.k])}</span></div>
+      <div class="cmp-row"><span class="cmp-key">Thay đổi</span><span class="cmp-val ${pos?'pos':'neg'}">${pos?'▲':'▼'} ${fmtNum(Math.abs(diff))} (${pct}%)</span></div>
+    </div>`;
+  });
+
+  html += `</div>`;
+
+  // Per-player table
+  const diffs = allIds.map(id => {
+    const r1 = map1[id]||{merit:0,kill:0,heal:0,alliance:'',name:map2[id]?.name||id};
+    const r2 = map2[id]||{merit:0,kill:0,heal:0,alliance:'',name:map1[id]?.name||id};
+    return { id, name:r2.name||r1.name, alliance:r2.alliance||r1.alliance, m1:r1.merit, m2:r2.merit, dm:r2.merit-r1.merit, dk:r2.kill-r1.kill, dh:r2.heal-r1.heal };
+  }).sort((a,b)=>b.dm-a.dm);
+
+  html += `<div class="section-label" style="margin-top:20px">Chi Tiết Từng Người Chơi</div>
+  <div class="table-wrap"><table>
+    <thead><tr>
+      <th class="left">#</th><th class="left">Tên</th><th class="left">Liên Minh</th>
+      <th>CT Trước</th><th>CT Sau</th><th>+/- CT</th><th>+/- Tiêu Diệt</th><th>+/- Chữa</th>
+    </tr></thead>
+    <tbody>
+      ${diffs.map((d,i)=>`<tr>
+        <td class="left" style="color:var(--text-dim);font-weight:700">${i+1}</td>
+        <td class="left name" onclick="showPlayerDetail('${d.id}')">${d.name}</td>
+        <td class="left ally">[${d.alliance}]</td>
+        <td>${fmtNum(d.m1)}</td><td>${fmtNum(d.m2)}</td>
+        <td class="${d.dm>=0?'pos':'neg'}">${d.dm>=0?'▲':'▼'} ${fmtNum(Math.abs(d.dm))}</td>
+        <td class="${d.dk>=0?'pos':'neg'}">${d.dk>=0?'▲':'▼'} ${fmtNum(Math.abs(d.dk))}</td>
+        <td class="${d.dh>=0?'pos':'neg'}">${d.dh>=0?'▲':'▼'} ${fmtNum(Math.abs(d.dh))}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+
+  el.innerHTML = html;
+}
+window.renderCmpResult = renderCmpResult;
+
+// ══════════════════════════════════════════
+// TAB: IMPORT (admin only)
+// ══════════════════════════════════════════
+function renderImport() {
+  document.getElementById('tab-import').innerHTML = `
+    <div class="panel">
+      <div class="panel-title">📥 Nhập Dữ Liệu Mới</div>
+      <textarea id="importTxt" placeholder="Dán dữ liệu từ Tabi vào đây...&#10;&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 9/3/2026 3:29:49 UTC&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }"></textarea>
+      <div style="font-size:0.8rem;color:var(--text-dim);margin-top:7px;line-height:1.7">
+        <b style="color:var(--gold)">Ngày trùng</b> → thay thế &nbsp;·&nbsp; <b style="color:var(--green)">Ngày mới</b> → thêm vào lịch sử
+      </div>
+      <div class="flex-row" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="doImport()">⚔️ Nhập Dữ Liệu</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importTxt').value='';document.getElementById('importStatus').className='status'">🗑 Xóa</button>
+      </div>
+      <div id="importStatus" class="status"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">📋 Hướng Dẫn</div>
+      <div style="font-size:0.85rem;color:var(--text-dim);line-height:2.1">
+        1️⃣ Lấy dữ liệu từ Tabi mỗi ngày, dán vào ô trên<br>
+        2️⃣ Nhấn <b style="color:var(--gold)">Nhập Dữ Liệu</b> — hệ thống tự nhận server & ngày<br>
+        3️⃣ Dữ liệu lưu Firebase, mọi người thấy ngay<br>
+        4️⃣ Người dùng thường chỉ thấy tab Xem & So Sánh
+      </div>
+    </div>`;
+}
+
+async function doImport() {
+  const raw = document.getElementById('importTxt').value.trim();
+  const st = document.getElementById('importStatus');
+  if (!raw) { st.className='status error show'; st.textContent='Vui lòng dán dữ liệu vào ô trên!'; return; }
+  try {
+    const { server, dateKey, rows } = parseData(raw);
+    const isReplace = !!(DATA[server]?.[dateKey]);
+    await saveData(`servers/${server}/${dateKey}`, rows);
+    st.className='status success show';
+    st.textContent = `${isReplace?'🔄 Đã thay thế':'✅ Đã thêm mới'} Server ${server} ngày ${fmtDate(dateKey)} — ${rows.length} người chơi`;
+    document.getElementById('importTxt').value = '';
+    setTimeout(()=>{ if(st) st.className='status'; }, 5000);
+  } catch(e) {
+    st.className='status error show';
+    st.textContent = '❌ ' + e.message;
+  }
+}
+window.doImport = doImport;
+
+// ══════════════════════════════════════════
+// TAB: MANAGE (admin only)
+// ══════════════════════════════════════════
+function renderManage() {
+  const servers = Object.keys(DATA).sort((a,b)=>+a-+b);
+  let html = `<div class="panel"><div class="panel-title">⚙️ Quản Lý Dữ Liệu</div>`;
+  if (!servers.length) {
+    html += `<div class="empty">Chưa có dữ liệu</div>`;
+  } else {
+    html += servers.map(s => {
+      const dates = Object.keys(DATA[s]).sort();
+      const total = Object.values(DATA[s]).reduce((sum,r)=>sum+r.length,0);
+      return `<div class="manage-server">
+        <div class="flex-row" style="justify-content:space-between;margin-bottom:10px">
+          <div>
+            <span style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--gold)">Server ${s}</span>
+            <span style="color:var(--text-dim);font-size:0.8rem;margin-left:10px">${dates.length} ngày · ${total} bản ghi</span>
+          </div>
+          <button class="btn btn-danger" style="padding:5px 12px;font-size:0.82rem" onclick="deleteServer('${s}')">🗑 Xóa Server</button>
+        </div>
+        <div class="date-list">
+          ${dates.map(d=>`<div class="chip">📅 ${fmtDate(d)} (${DATA[s][d].length})<button class="chip-del" onclick="deleteDate('${s}','${d}')">✕</button></div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  html += `</div>
+  <div class="panel">
+    <div class="panel-title">💾 Backup</div>
+    <div class="flex-row">
+      <button class="btn btn-ghost" onclick="exportData()">⬇️ Xuất JSON</button>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text-dim);margin-top:8px">Xuất dữ liệu ra file JSON để backup dự phòng.</div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn btn-danger" onclick="clearAll()">🗑 Xóa Toàn Bộ</button>
+    </div>
+  </div>`;
+  document.getElementById('tab-manage').innerHTML = html;
+}
+
+async function deleteDate(server, date) {
+  if (!confirm(`Xóa Server ${server} ngày ${fmtDate(date)}?`)) return;
+  await removeData(`servers/${server}/${date}`);
+  if (curServer === server && curDate === date) curDate = null;
+}
+async function deleteServer(server) {
+  if (!confirm(`Xóa toàn bộ Server ${server}? Không thể hoàn tác!`)) return;
+  await removeData(`servers/${server}`);
+  if (curServer === server) { curServer = null; curDate = null; }
+}
+async function clearAll() {
+  if (!confirm('Xóa TOÀN BỘ dữ liệu? Không thể hoàn tác!')) return;
+  await removeData('servers');
+}
+function exportData() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `alliance-tracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+window.deleteDate = deleteDate;
+window.deleteServer = deleteServer;
+window.clearAll = clearAll;
+window.exportData = exportData;
+
+// ══════════════════════════════════════════
+// ADMIN AUTH
+// ══════════════════════════════════════════
+function openAdminModal() {
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminPwErr').style.display = 'none';
+  document.getElementById('adminModal').classList.add('open');
+  setTimeout(()=>document.getElementById('adminPwInput').focus(), 100);
+}
+function tryAdminLogin() {
+  const pw = document.getElementById('adminPwInput').value;
+  if (pw === ADMIN_PASSWORD) {
+    isAdmin = true;
+    document.getElementById('adminModal').classList.remove('open');
+    activeTab = 'import';
+    renderAll();
+    showTab('import');
+  } else {
+    document.getElementById('adminPwErr').style.display = '';
+  }
+}
+function logoutAdmin() {
+  isAdmin = false;
+  activeTab = 'view';
+  renderAll();
+  showTab('view');
+}
+function closeAdminModal(e) { if (e.target === document.getElementById('adminModal')) document.getElementById('adminModal').classList.remove('open'); }
+window.openAdminModal = openAdminModal;
+window.tryAdminLogin = tryAdminLogin;
+window.logoutAdmin = logoutAdmin;
+window.closeAdminModal = closeAdminModal;
+
+</script>
+</body>
+</html>
