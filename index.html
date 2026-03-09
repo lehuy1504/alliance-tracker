@@ -374,7 +374,7 @@ function renderView() {
       </div>`;
     }
 
-    const cols=[{k:'merit',l:'Công Trạng'},{k:'meritRate',l:'Tỉ Lệ CT'},{k:'power',l:'Lực Chiến'},{k:'kill',l:'Tiêu Diệt'},{k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},{k:'manaSpend',l:'Tiêu Mana'},{k:'manaGather',l:'Thu Mana'}];
+    const cols=[{k:'merit',l:'Công Trạng'},{k:'meritRate',l:'Tỉ Lệ CT'},{k:'power',l:'Lực Chiến'},{k:'kill',l:'Tiêu Diệt'},{k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},{k:'manaSpend',l:'Tiêu Mana'}];
     const sorted=[...rows].sort((a,b)=>b[sortCol]-a[sortCol]);
 
     html += `<div class="panel" style="padding:0;overflow:hidden">
@@ -407,7 +407,6 @@ function renderView() {
             <td>${fmtNum(r.merit)}</td><td class="rate">${r.meritRate}%</td>
             <td>${fmtNum(r.power)}</td><td>${fmtNum(r.kill)}</td>
             <td>${fmtNum(r.dead)}</td><td>${fmtNum(r.heal)}</td>
-            <td>${fmtNum(r.manaSpend)}</td><td>${fmtNum(r.manaGather)}</td>
           </tr>`;}).join('')}
         </tbody>
       </table></div>
@@ -498,7 +497,7 @@ function renderCmpResult() {
   const r1=DATA[srv]?.[d1]||[],r2=DATA[srv]?.[d2]||[];
   const m1=Object.fromEntries(r1.map(r=>[r.id,r])),m2=Object.fromEntries(r2.map(r=>[r.id,r]));
   const ids=[...new Set([...Object.keys(m1),...Object.keys(m2)])];
-  const metrics=[{k:'merit',l:'Công Trạng'},{k:'power',l:'Lực Chiến'},{k:'kill',l:'Tiêu Diệt'},{k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},{k:'manaSpend',l:'Tiêu Mana'},{k:'manaGather',l:'Thu Mana'}];
+  const metrics=[{k:'merit',l:'Công Trạng'},{k:'power',l:'Lực Chiến'},{k:'kill',l:'Tiêu Diệt'},{k:'dead',l:'Tử Trận'},{k:'heal',l:'Chữa Lính'},{k:'manaSpend',l:'Tiêu Mana'}];
   const s1=Object.fromEntries(metrics.map(m=>[m.k,r1.reduce((s,r)=>s+r[m.k],0)]));
   const s2=Object.fromEntries(metrics.map(m=>[m.k,r2.reduce((s,r)=>s+r[m.k],0)]));
   let html=`<div class="flex-row" style="margin-bottom:14px">
