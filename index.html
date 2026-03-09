@@ -1102,6 +1102,7 @@
       <div class="table-wrap"><table>
         <thead><tr>
           <th style="width:42px">#</th>
+          <th style="width:60px">ID</th>
           <th class="left" style="min-width:160px">Tên</th>
           <th class="left" style="width:85px">Liên Minh</th>
           ${cols.map(c => `<th class="${sortCol === c.k ? 'sorted' : ''}" onclick="setSortColFn('${c.k}')" style="width:105px">${c.l} ${sortCol === c.k ? '↓' : '↕'}</th>`).join('')}
@@ -1111,6 +1112,7 @@
           const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
           return `<tr>
             <td class="rank ${rc}">${medal}</td>
+            <td>${r.id}</td>
             <td class="left name" onclick="showPlayerDetail('${r.id}')">${r.name}</td>
             <td class="left ally">[${r.alliance}]</td>
             <td>${fmtNum(r.merit)}</td><td class="rate">${r.meritRate}%</td>
