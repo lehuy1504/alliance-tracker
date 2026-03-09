@@ -99,12 +99,11 @@
     }
 
     .header-top {
-      position: absolute;
-      top: 16px;
-      right: 0;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      margin-top: 10px;
     }
 
     .tabs {
@@ -817,10 +816,6 @@
     <header>
       <div class="logo">⚔ ALLIANCE TRACKER</div>
       <div class="subtitle">Game Server Intelligence Dashboard - From Tabi 174 with love! ❤️</div>
-      <div class="header-top">
-        <span id="savingBadge" class="saving-badge" style="display:none">💾 Đang lưu...</span>
-        <div id="adminArea"></div>
-      </div>
     </header>
     <div class="tabs" id="tabBar"></div>
     <div id="loadingScreen" class="panel" style="text-align:center;padding:50px">
@@ -1325,6 +1320,10 @@
     window.clearAll = async () => { if (!confirm('Xóa TOÀN BỘ? Không thể hoàn tác!')) return; await removeData('servers'); };
     window.exportData = () => { const b = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); };
   </script>
+  <div style="text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border)">
+    <span id="savingBadge" class="saving-badge" style="display:none">💾 Đang lưu...</span>
+    <div id="adminArea"></div>
+  </div>
 </body>
 
 </html>
