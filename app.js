@@ -1,8 +1,12 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { T, getLang, setLang } from './lang.js';
 
     const firebaseConfig = { apiKey: "AIzaSyCp6L4C-4KhZNm67VpC3hu7ws_n2C5XTfA", authDomain: "alliance-tracker-ddc87.firebaseapp.com", databaseURL: "https://alliance-tracker-ddc87-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "alliance-tracker-ddc87", storageBucket: "alliance-tracker-ddc87.firebasestorage.app", messagingSenderId: "910735026600", appId: "1:910735026600:web:d2199d026f1e476cb4d59d" };
     const fbApp = initializeApp(firebaseConfig), fbDB = getDatabase(fbApp);
+
+    // Update loading text to match saved language
+    { const el = document.getElementById('loadingText'); if (el) el.textContent = T('loading'); }
 
     let DATA = {}, curServer = null, curDate = null;
     let activeTab = 'view', sortCol = 'merit', sortDir = 'desc', numFmt = 'short', searchQuery = '';
@@ -11,23 +15,39 @@
     let _cmpDiffs = [];
 
     // ══════════════════════════════════════════════
-    // Column config for compare table
+    // Column config (localized getter functions)
     // ══════════════════════════════════════════════
-    // Fixed cols always visible; extra cols toggleable
-    const CMP_FIXED = [
-      { k: 'dm', l: 'Công Trạng' }, { k: 'dk', l: 'Tiêu Diệt' }, { k: 'dh', l: 'Chữa Lính' },
-      { k: 'dd', l: 'Tử Trận' }, { k: 'dp', l: 'Lực Chiến' }, { k: 'dn', l: 'Tiêu Mana' },
+    const getCmpFixed = () => [
+      { k: 'dm', l: T('col_merit') }, { k: 'dk', l: T('col_kill') }, { k: 'dh', l: T('col_heal') },
+      { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dn', l: T('col_mana_spend') },
     ];
-    const CMP_EXTRA = [
-      { k: 'dgs', l: 'Vàng Tiêu' }, { k: 'dws', l: 'Gỗ Tiêu' }, { k: 'dss', l: 'Đá Tiêu' }, { k: 'dges', l: 'Gem Tiêu' },
-      { k: 'dgg', l: 'Vàng Thu' }, { k: 'dwg', l: 'Gỗ Thu' }, { k: 'dsg', l: 'Đá Thu' }, { k: 'dmg', l: 'Mana Thu' }, { k: 'dgeg', l: 'Gem Thu' },
+    const getCmpExtra = () => [
+      { k: 'dgs', l: T('col_gold_spend') }, { k: 'dws', l: T('col_wood_spend') }, { k: 'dss', l: T('col_stone_spend') }, { k: 'dges', l: T('col_gem_spend') },
+      { k: 'dgg', l: T('col_gold_gather') }, { k: 'dwg', l: T('col_wood_gather') }, { k: 'dsg', l: T('col_stone_gather') }, { k: 'dmg', l: T('col_mana_gather') }, { k: 'dgeg', l: T('col_gem_gather') },
     ];
-    let cmpExtraVis = new Set(); // extra cols currently visible
+    const getTop10Cols = () => [
+      { k: 'before', l: T('top10_before') }, { k: 'after', l: T('top10_after') }, { k: 'diff', l: T('top10_diff') },
+    ];
+    const getDiffSortOpts = () => [
+      { v: 'dm', l: T('col_merit') }, { v: 'dp', l: T('col_power') }, { v: 'dk', l: T('col_kill') },
+      { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') }, { v: 'dn', l: T('col_mana_spend') },
+      { v: 'dgs', l: T('col_gold_spend') }, { v: 'dws', l: T('col_wood_spend') }, { v: 'dss', l: T('col_stone_spend') },
+      { v: 'dges', l: T('col_gem_spend') }, { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
+      { v: 'dsg', l: T('col_stone_gather') }, { v: 'dmg', l: T('col_mana_gather') }, { v: 'dgeg', l: T('col_gem_gather') },
+    ];
+    const getTop10Metas = () => [
+      { v: 'dm', l: T('top10_merit'), field: 'merit' }, { v: 'dk', l: T('top10_kill'), field: 'kill' },
+      { v: 'dh', l: T('top10_heal'), field: 'heal' }, { v: 'dd', l: T('top10_dead'), field: 'dead' },
+      { v: 'dp', l: T('top10_power'), field: 'power' }, { v: 'dn', l: T('top10_mana'), field: 'manaSpend' },
+      { v: 'dmg', l: T('top10_mana_gather'), field: 'manaGather' },
+    ];
+    const getDiffSections = () => [
+      { t: T('section_battle'), fields: [[T('field_merit'), 'merit'], [T('field_merit_rate'), 'meritRate', true], [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
+      { t: T('section_spend'), fields: [[T('field_gold'), 'goldSpend'], [T('field_wood'), 'woodSpend'], [T('field_stone'), 'stoneSpend'], [T('field_mana'), 'manaSpend'], [T('field_gem'), 'gemSpend']] },
+      { t: T('section_gather'), fields: [[T('field_gold'), 'goldGather'], [T('field_wood'), 'woodGather'], [T('field_stone'), 'stoneGather'], [T('field_mana'), 'manaGather'], [T('field_gem'), 'gemGather']] },
+    ];
 
-    // Column config for top10
-    const TOP10_COLS = [
-      { k: 'before', l: 'Giá Trị Trước' }, { k: 'after', l: 'Giá Trị Sau' }, { k: 'diff', l: 'Chênh Lệch' },
-    ];
+    let cmpExtraVis = new Set(); // extra cols currently visible
     let top10Vis = new Set(['before', 'after', 'diff']); // all on by default
 
     // ── Close pickers on outside click ──
@@ -42,24 +62,23 @@
     };
 
     // Build a column picker widget
-    // fixedCols = always-on (shown greyed out), extraCols = toggleable
     function makePicker(dropId, fixedCols, extraCols, visSet, toggleFnName) {
       const shown = fixedCols.length + visSet.size, total = fixedCols.length + extraCols.length;
       const hasExtra = visSet.size > 0;
       const fixedItems = fixedCols.length ? `
-      <div class="cpgroup-label">Mặc định</div>
+      <div class="cpgroup-label">${T('cp_default')}</div>
       ${fixedCols.map(c => `<div class="cpitem disabled"><input type="checkbox" checked disabled><label>${c.l}</label></div>`).join('')}
       <div class="cpsep"></div>
-      <div class="cpgroup-label">Tùy chọn thêm</div>`: '';
+      <div class="cpgroup-label">${T('cp_extra')}</div>`: '';
       const extraItems = extraCols.map(c => `
       <div class="cpitem"><input type="checkbox" id="cp_${dropId}_${c.k}" ${visSet.has(c.k) ? 'checked' : ''} onchange="${toggleFnName}('${c.k}',this.checked)"><label for="cp_${dropId}_${c.k}">${c.l}</label></div>`).join('');
       return `<div class="cpw">
-      <button class="cpbtn ${hasExtra ? 'active' : ''}" onclick="event.stopPropagation();cpToggle('${dropId}')">⚙ Cột&nbsp;<span style="opacity:.65">(${shown}/${total})</span></button>
+      <button class="cpbtn ${hasExtra ? 'active' : ''}" onclick="event.stopPropagation();cpToggle('${dropId}')">⚙ ${T('cp_col')}&nbsp;<span style="opacity:.65">(${shown}/${total})</span></button>
       <div class="cpdrop" id="${dropId}">
         <div class="cpactions">
-          <a onclick="${toggleFnName}('__all')">Tất cả</a>
-          <a onclick="${toggleFnName}('__none')">Bỏ thêm</a>
-          <a onclick="${toggleFnName}('__reset')">Mặc định</a>
+          <a onclick="${toggleFnName}('__all')">${T('cp_all')}</a>
+          <a onclick="${toggleFnName}('__none')">${T('cp_none')}</a>
+          <a onclick="${toggleFnName}('__reset')">${T('cp_reset')}</a>
         </div>
         ${fixedItems}${extraItems}
       </div>
@@ -68,22 +87,24 @@
 
     // ── CMP table column toggle ──
     window.onCmpColToggle = (key, checked) => {
-      if (key === '__all') CMP_EXTRA.forEach(c => cmpExtraVis.add(c.k));
+      const extra = getCmpExtra();
+      if (key === '__all') extra.forEach(c => cmpExtraVis.add(c.k));
       else if (key === '__none' || key === '__reset') cmpExtraVis = new Set();
       else checked ? cmpExtraVis.add(key) : cmpExtraVis.delete(key);
-      _redrawCmpTable(); _syncPickerBtn('cmpColPick', CMP_FIXED, CMP_EXTRA, cmpExtraVis);
-      CMP_EXTRA.forEach(c => { const cb = document.getElementById(`cp_cmpColPick_${c.k}`); if (cb) cb.checked = cmpExtraVis.has(c.k); });
+      _redrawCmpTable(); _syncPickerBtn('cmpColPick', getCmpFixed(), getCmpExtra(), cmpExtraVis);
+      getCmpExtra().forEach(c => { const cb = document.getElementById(`cp_cmpColPick_${c.k}`); if (cb) cb.checked = cmpExtraVis.has(c.k); });
     };
 
     // ── Top10 column toggle ──
     window.onTop10ColToggle = (key, checked) => {
-      if (key === '__all') TOP10_COLS.forEach(c => top10Vis.add(c.k));
+      const cols = getTop10Cols();
+      if (key === '__all') cols.forEach(c => top10Vis.add(c.k));
       else if (key === '__none') top10Vis = new Set();
       else if (key === '__reset') top10Vis = new Set(['before', 'after', 'diff']);
       else checked ? top10Vis.add(key) : top10Vis.delete(key);
       const el = document.getElementById('top10Body'); if (el) el.innerHTML = buildTop10(_cmpDiffs, cmpTop10Key);
-      _syncPickerBtn('top10ColPick', [], TOP10_COLS, top10Vis);
-      TOP10_COLS.forEach(c => { const cb = document.getElementById(`cp_top10ColPick_${c.k}`); if (cb) cb.checked = top10Vis.has(c.k); });
+      _syncPickerBtn('top10ColPick', [], cols, top10Vis);
+      cols.forEach(c => { const cb = document.getElementById(`cp_top10ColPick_${c.k}`); if (cb) cb.checked = top10Vis.has(c.k); });
     };
 
     function _syncPickerBtn(dropId, fixedCols, extraCols, visSet) {
@@ -91,7 +112,7 @@
       if (!btn) return;
       const prevBtn = btn.previousElementSibling; if (!prevBtn) return;
       const shown = fixedCols.length + visSet.size, total = fixedCols.length + extraCols.length;
-      prevBtn.innerHTML = `⚙ Cột&nbsp;<span style="opacity:.65">(${shown}/${total})</span>`;
+      prevBtn.innerHTML = `⚙ ${T('cp_col')}&nbsp;<span style="opacity:.65">(${shown}/${total})</span>`;
       prevBtn.className = 'cpbtn' + (visSet.size > 0 ? ' active' : '');
     }
 
@@ -106,19 +127,20 @@
       const badge = document.getElementById('cmpBadge'); if (!badge) return;
       const isOn = !!cmpSearchQ.trim();
       badge.className = 'count-badge' + (isOn ? ' on' : '');
-      badge.innerHTML = isOn ? (filtered.length === 0 ? '❌ Không tìm thấy' : `<b>${filtered.length}</b> / ${total} người`) : `<b>${total}</b> người chơi`;
+      badge.innerHTML = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${total} ${T('players_count')}`) : `<b>${total}</b> ${T('players_count')}`;
     }
 
     function buildCmpTable(filtered) {
+      const CMP_FIXED = getCmpFixed(), CMP_EXTRA = getCmpExtra();
       const allCols = [...CMP_FIXED, ...CMP_EXTRA.filter(c => cmpExtraVis.has(c.k))];
       const q = cmpSearchQ;
       const rows = !filtered.length
-        ? `<tr class="no-results"><td colspan="${4 + allCols.length}">😔 Không tìm thấy — thử từ khác?</td></tr>`
+        ? `<tr class="no-results"><td colspan="${4 + allCols.length}">${T('not_found_row')}</td></tr>`
         : filtered.map((d, i) => {
           const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1, rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
           return `<tr>
             <td class="rank ${rc}">${medal}</td>
-            <td class="id-click" onclick="showDiffDetail('${d.id}')" title="Xem chi tiết">${d.id}</td>
+            <td class="id-click" onclick="showDiffDetail('${d.id}')" title="${T('view_detail')}">${d.id}</td>
             <td class="left name" onclick="showDiffDetail('${d.id}',true)">${hl(d.name, q)}</td>
             <td class="left ally">[${hl(d.alliance, q)}]</td>
             ${allCols.map(c => `<td class="${dcls(d[c.k])}">${arrow(d[c.k], cmpNumFmt)}</td>`).join('')}
@@ -127,8 +149,8 @@
       return `<table><thead><tr>
         <th style="width:38px">#</th>
         <th class="nosort" style="width:54px">ID 🔍</th>
-        <th class="left" style="min-width:140px">Tên</th>
-        <th class="left" style="width:76px">Liên Minh</th>
+        <th class="left" style="min-width:140px">${T('col_name')}</th>
+        <th class="left" style="width:76px">${T('col_alliance')}</th>
         ${allCols.map(c => `<th class="${cmpSortKey === c.k ? 'sorted' : ''}" onclick="setCmpSort('${c.k}')" style="min-width:110px">+/- ${c.l} ${cmpSortKey === c.k ? (cmpSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
       </tr></thead>
       <tbody id="cmpTbody">${rows}</tbody>
@@ -154,7 +176,12 @@
     function hl(t, q) { if (!q) return String(t); const e = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return String(t).replace(new RegExp(e, 'gi'), m => `<span class="hl">${m}</span>`); }
 
     function renderAll() { renderTabBar(); renderTab(activeTab); }
-    function renderTabBar() { const tabs = [['view', '📊 Xem Dữ Liệu'], ['compare', '🔄 So Sánh']]; document.getElementById('tabBar').innerHTML = tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join(''); }
+    function renderTabBar() {
+      const tabs = [['view', T('tab_view')], ['compare', T('tab_compare')]];
+      document.getElementById('tabBar').innerHTML =
+        tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join('') +
+        `<button class="tab-btn" style="margin-left:auto;opacity:.85;font-size:.8rem" onclick="toggleLang()">${T('lang_toggle')}</button>`;
+    }
     function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); }
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
 
@@ -165,7 +192,7 @@
     function filterRows(rows) { const q = searchQuery.trim().toLowerCase(); if (!q) return rows; return rows.filter(r => r.name.toLowerCase().includes(q) || r.alliance.toLowerCase().includes(q) || r.id.toString().includes(q)); }
     function buildRows(filtered, q) {
       const fmt = numFmt === 'short' ? fmtNum : fmtFull;
-      if (!filtered.length) return `<tr class="no-results"><td colspan="11">😔 Không tìm thấy "<b>${q}</b>"</td></tr>`;
+      if (!filtered.length) return `<tr class="no-results"><td colspan="11">${T('not_found_row')}</td></tr>`;
       return filtered.map((r, i) => { const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1; const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : ''; return `<tr><td class="rank ${rc}">${medal}</td><td>${r.id}</td><td class="left name" onclick="showPlayerDetail('${r.id}',false)">${hl(r.name, q)}</td><td class="left ally">[${hl(r.alliance, q)}]</td><td>${fmt(r.merit)}</td><td class="rate">${r.meritRate}%</td><td>${fmt(r.power)}</td><td>${fmt(r.kill)}</td><td>${fmt(r.dead)}</td><td>${fmt(r.heal)}</td><td>${fmt(r.manaSpend)}</td></tr>`; }).join('');
     }
 
@@ -175,32 +202,32 @@
       if (curServer && DATA[curServer]) { const ds = Object.keys(DATA[curServer]).sort(); if (!curDate || !DATA[curServer][curDate]) curDate = ds[ds.length - 1]; }
       const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
       const dates = curServer && DATA[curServer] ? Object.keys(DATA[curServer]).sort().reverse() : [];
-      let html = `<div class="panel"><div class="panel-title">🗺 Chọn Server</div>`;
-      if (!servers.length) html += `<div class="empty">⚔️<br><br>Chưa có dữ liệu — Admin cần nhập trước</div>`;
-      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}</div><div class="server-sub">Server ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ngày</div></div>`).join('')}</div>`;
+      let html = `<div class="panel"><div class="panel-title">${T('select_server')}</div>`;
+      if (!servers.length) html += `<div class="empty">⚔️<br><br>${T('no_data_admin')}</div>`;
+      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
       html += `</div>`;
       if (curServer && dates.length) {
-        html += `<div class="panel"><div class="panel-title">📅 Chọn Ngày</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
+        html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
         if (rows.length) {
           const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
-          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">Người Chơi</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} liên minh</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">Tổng Lực Chiến</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">Tổng Công Trạng</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">Tổng Tiêu Diệt</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">Tổng Chữa Lính</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">Tổng Tiêu Mana</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
+          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
         }
-        const cols = [{ k: 'merit', l: 'Công Trạng' }, { k: 'meritRate', l: 'Tỉ Lệ CT' }, { k: 'power', l: 'Lực Chiến' }, { k: 'kill', l: 'Tiêu Diệt' }, { k: 'dead', l: 'Tử Trận' }, { k: 'heal', l: 'Chữa Lính' }, { k: 'manaSpend', l: 'Tiêu Mana' }];
+        const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') }];
         const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]);
         const q = searchQuery.trim(); const filtered = filterRows(sorted); const isOn = !!q;
-        const badge = isOn ? (filtered.length === 0 ? '❌ Không tìm thấy' : `<b>${filtered.length}</b> / ${sorted.length} người`) : `<b>${sorted.length}</b> người chơi`;
+        const badge = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')}`) : `<b>${sorted.length}</b> ${T('players_count')}`;
         html += `<div class="panel" style="padding:0;overflow:hidden">
         <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-          <div style="display:flex;align-items:center;gap:10px"><div class="panel-title" style="margin:0">📊 Bảng Xếp Hạng</div><span class="count-badge ${isOn ? 'on' : ''}">${badge}</span></div>
+          <div style="display:flex;align-items:center;gap:10px"><div class="panel-title" style="margin:0">${T('ranking')}</div><span class="count-badge ${isOn ? 'on' : ''}">${badge}</span></div>
           <div class="flex-row">
-            <div class="search-wrap"><input class="search-input" type="text" id="searchInput" placeholder="🔍 Tìm tên / liên minh / ID..." value="${q.replace(/"/g, '&quot;')}" oninput="onSearch(this.value)" autocomplete="off"><button class="search-clear ${q ? 'show' : ''}" id="searchClearBtn" onclick="onSearch('');document.getElementById('searchInput').value='';document.getElementById('searchInput').focus()">✕</button></div>
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleFmt()">${numFmt === 'short' ? '🔢 Rút gọn' : '🔢 Đầy đủ'}</button>
+            <div class="search-wrap"><input class="search-input" type="text" id="searchInput" placeholder="${T('search_placeholder')}" value="${q.replace(/"/g, '&quot;')}" oninput="onSearch(this.value)" autocomplete="off"><button class="search-clear ${q ? 'show' : ''}" id="searchClearBtn" onclick="onSearch('');document.getElementById('searchInput').value='';document.getElementById('searchInput').focus()">✕</button></div>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleFmt()">${numFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
             <select onchange="setSortColFn(this.value)" style="width:auto">${cols.map(c => `<option value="${c.k}" ${sortCol === c.k ? 'selected' : ''}>${c.l}</option>`).join('')}</select>
           </div>
         </div>
         <div class="table-wrap"><table style="min-width:700px">
-          <thead><tr><th style="width:42px">#</th><th style="width:60px">ID</th><th class="left" style="min-width:150px">Tên</th><th class="left" style="width:80px">Liên Minh</th>${cols.map(c => `<th class="${sortCol === c.k ? 'sorted' : ''}" onclick="setSortColFn('${c.k}')" style="width:105px">${c.l} ${sortCol === c.k ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}</tr></thead>
+          <thead><tr><th style="width:42px">#</th><th style="width:60px">ID</th><th class="left" style="min-width:150px">${T('col_name')}</th><th class="left" style="width:80px">${T('col_alliance')}</th>${cols.map(c => `<th class="${sortCol === c.k ? 'sorted' : ''}" onclick="setSortColFn('${c.k}')" style="width:105px">${c.l} ${sortCol === c.k ? (sortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}</tr></thead>
           <tbody id="rankTbody">${buildRows(filtered, q)}</tbody>
         </table></div>
       </div>`;
@@ -219,7 +246,7 @@
       const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || []; if (!rows.length) return;
       const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]); const filtered = filterRows(sorted); const isOn = !!q.trim();
       const badge = document.querySelector('#tab-view .count-badge');
-      if (badge) { badge.className = 'count-badge' + (isOn ? ' on' : ''); badge.innerHTML = isOn ? (filtered.length === 0 ? '❌ Không tìm thấy' : `<b>${filtered.length}</b> / ${sorted.length} người`) : `<b>${sorted.length}</b> người chơi`; }
+      if (badge) { badge.className = 'count-badge' + (isOn ? ' on' : ''); badge.innerHTML = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')}`) : `<b>${sorted.length}</b> ${T('players_count')}`; }
       const tbody = document.getElementById('rankTbody'); if (tbody) tbody.innerHTML = buildRows(filtered, q);
     };
 
@@ -231,9 +258,9 @@
       document.getElementById('pModalName').textContent = r.name;
       document.getElementById('pModalSub').textContent = `[${r.alliance}] · ID: ${r.id}`;
       const secs = [
-        { t: '⚔️ Chiến Đấu', rows: [['ID', r.id], ['Liên Minh', r.alliance], ['Công Trạng', fmtFull(r.merit)], ['Tỉ Lệ CT', r.meritRate + '%'], ['Lực Chiến', fmtFull(r.power)], ['Lực Chiến Max', fmtFull(r.powerMax)], ['Tiêu Diệt', fmtFull(r.kill)], ['Tử Trận', fmtFull(r.dead)], ['Chữa Lính', fmtFull(r.heal)]] },
-        { t: '💰 Tiêu Thụ', rows: [['Vàng', fmtFull(r.goldSpend)], ['Gỗ', fmtFull(r.woodSpend)], ['Đá', fmtFull(r.stoneSpend)], ['Mana', fmtFull(r.manaSpend)], ['Gem', fmtFull(r.gemSpend)]] },
-        { t: '🌾 Thu Thập', rows: [['Vàng', fmtFull(r.goldGather)], ['Gỗ', fmtFull(r.woodGather)], ['Đá', fmtFull(r.stoneGather)], ['Mana', fmtFull(r.manaGather)], ['Gem', fmtFull(r.gemGather)]] }
+        { t: T('section_battle'), rows: [['ID', r.id], [T('field_alliance'), r.alliance], [T('field_merit'), fmtFull(r.merit)], [T('field_merit_rate'), r.meritRate + '%'], [T('field_power'), fmtFull(r.power)], [T('field_power_max'), fmtFull(r.powerMax)], [T('field_kill'), fmtFull(r.kill)], [T('field_dead'), fmtFull(r.dead)], [T('field_heal'), fmtFull(r.heal)]] },
+        { t: T('section_spend'), rows: [[T('field_gold'), fmtFull(r.goldSpend)], [T('field_wood'), fmtFull(r.woodSpend)], [T('field_stone'), fmtFull(r.stoneSpend)], [T('field_mana'), fmtFull(r.manaSpend)], [T('field_gem'), fmtFull(r.gemSpend)]] },
+        { t: T('section_gather'), rows: [[T('field_gold'), fmtFull(r.goldGather)], [T('field_wood'), fmtFull(r.woodGather)], [T('field_stone'), fmtFull(r.stoneGather)], [T('field_mana'), fmtFull(r.manaGather)], [T('field_gem'), fmtFull(r.gemGather)]] }
       ];
       document.getElementById('pModalBody').innerHTML = secs.map(sec => `<div class="detail-sec"><div class="detail-sec-title">${sec.t}</div>${sec.rows.map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}</div>`).join('');
       document.getElementById('playerModal').classList.add('open');
@@ -242,25 +269,6 @@
     // ════════════════════════════════════
     // TAB: SO SÁNH
     // ════════════════════════════════════
-    const DIFF_SORT_OPTS = [
-      { v: 'dm', l: 'Công Trạng' }, { v: 'dp', l: 'Lực Chiến' }, { v: 'dk', l: 'Tiêu Diệt' },
-      { v: 'dd', l: 'Tử Trận' }, { v: 'dh', l: 'Chữa Lính' }, { v: 'dn', l: 'Tiêu Mana' },
-      { v: 'dgs', l: 'Vàng Tiêu' }, { v: 'dws', l: 'Gỗ Tiêu' }, { v: 'dss', l: 'Đá Tiêu' },
-      { v: 'dges', l: 'Gem Tiêu' }, { v: 'dgg', l: 'Vàng Thu' }, { v: 'dwg', l: 'Gỗ Thu' },
-      { v: 'dsg', l: 'Đá Thu' }, { v: 'dmg', l: 'Mana Thu' }, { v: 'dgeg', l: 'Gem Thu' },
-    ];
-    const TOP10_METAS = [
-      { v: 'dm', l: '▲ Công Trạng', field: 'merit' }, { v: 'dk', l: '▲ Tiêu Diệt', field: 'kill' },
-      { v: 'dh', l: '▲ Chữa Lính', field: 'heal' }, { v: 'dd', l: '▲ Tử Trận', field: 'dead' },
-      { v: 'dp', l: '▲ Lực Chiến', field: 'power' }, { v: 'dn', l: '▲ Tiêu Mana', field: 'manaSpend' },
-      { v: 'dmg', l: '▲ Thu Mana', field: 'manaGather' },
-    ];
-    const DIFF_SECTIONS = [
-      { t: '⚔️ Chiến Đấu', fields: [['Công Trạng', 'merit'], ['Tỉ Lệ CT', 'meritRate', true], ['Lực Chiến', 'power'], ['Lực Chiến Max', 'powerMax'], ['Tiêu Diệt', 'kill'], ['Tử Trận', 'dead'], ['Chữa Lính', 'heal']] },
-      { t: '💰 Tiêu Thụ', fields: [['Vàng', 'goldSpend'], ['Gỗ', 'woodSpend'], ['Đá', 'stoneSpend'], ['Mana', 'manaSpend'], ['Gem', 'gemSpend']] },
-      { t: '🌾 Thu Thập', fields: [['Vàng', 'goldGather'], ['Gỗ', 'woodGather'], ['Đá', 'stoneGather'], ['Mana', 'manaGather'], ['Gem', 'gemGather']] },
-    ];
-
     function computeDiffs(r1, r2) {
       const m1 = Object.fromEntries(r1.map(r => [r.id, r])), m2 = Object.fromEntries(r2.map(r => [r.id, r]));
       const ids = [...new Set([...Object.keys(m1), ...Object.keys(m2)])];
@@ -282,7 +290,7 @@
 
     function renderCompare() {
       const servers = Object.keys(DATA).sort((a, b) => +a - +b);
-      if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">Chưa có dữ liệu</div>`; return; }
+      if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">${T('no_data_cmp')}</div>`; return; }
       if (!cmpSrv || !DATA[cmpSrv]) cmpSrv = curServer || servers[0];
       const dates = DATA[cmpSrv] ? Object.keys(DATA[cmpSrv]).sort() : [];
       if (!cmpD1 || !DATA[cmpSrv]?.[cmpD1]) cmpD1 = dates.length >= 2 ? dates[dates.length - 2] : dates[0] || '';
@@ -290,11 +298,11 @@
       const mkOpts = srv => (DATA[srv] ? Object.keys(DATA[srv]).sort() : []).map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
       document.getElementById('tab-compare').innerHTML = `
       <div class="panel">
-        <div class="panel-title">🔄 So Sánh Giữa Hai Ngày</div>
+        <div class="panel-title">${T('cmp_title')}</div>
         <div class="flex-row" style="margin-bottom:16px;gap:12px">
-          <div><div class="section-label">Server</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>Server ${s}</option>`).join('')}</select></div>
-          <div><div class="section-label">Ngày Trước</div><select id="cmpD1Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
-          <div><div class="section-label">Ngày Sau</div><select id="cmpD2Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
+          <div><div class="section-label">Server</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>${T('server_prefix')} ${s}</option>`).join('')}</select></div>
+          <div><div class="section-label">${T('cmp_date_before')}</div><select id="cmpD1Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
+          <div><div class="section-label">${T('cmp_date_after')}</div><select id="cmpD2Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
         </div>
         <div id="cmpBody"></div>
       </div>`;
@@ -316,41 +324,42 @@
     function renderCmpBody() {
       const el = document.getElementById('cmpBody'); if (!el) return;
       if (!cmpSrv || !cmpD1 || !cmpD2) { el.innerHTML = ''; return; }
-      if (cmpD1 === cmpD2) { el.innerHTML = `<div class="status info show">Vui lòng chọn 2 ngày khác nhau</div>`; return; }
+      if (cmpD1 === cmpD2) { el.innerHTML = `<div class="status info show">${T('cmp_select_diff')}</div>`; return; }
       const r1 = DATA[cmpSrv]?.[cmpD1] || [], r2 = DATA[cmpSrv]?.[cmpD2] || [];
       _cmpDiffs = computeDiffs(r1, r2);
 
-      const totMetrics = [{ k: 'merit', l: 'Công Trạng', acc: 'var(--purple)' }, { k: 'power', l: 'Lực Chiến', acc: 'var(--gold)' }, { k: 'kill', l: 'Tiêu Diệt', acc: 'var(--red)' }, { k: 'dead', l: 'Tử Trận', acc: 'var(--text-dim)' }, { k: 'heal', l: 'Chữa Lính', acc: 'var(--green)' }, { k: 'manaSpend', l: 'Tiêu Mana', acc: 'var(--blue)' }];
+      const totMetrics = [{ k: 'merit', l: T('col_merit'), acc: 'var(--purple)' }, { k: 'power', l: T('col_power'), acc: 'var(--gold)' }, { k: 'kill', l: T('col_kill'), acc: 'var(--red)' }, { k: 'dead', l: T('col_dead'), acc: 'var(--text-dim)' }, { k: 'heal', l: T('col_heal'), acc: 'var(--green)' }, { k: 'manaSpend', l: T('col_mana_spend'), acc: 'var(--blue)' }];
       const tot = (arr, k) => arr.reduce((s, r) => s + (r[k] || 0), 0);
       let html = `<div class="flex-row" style="margin-bottom:14px">
-        <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">Trước:</span> <b>${fmtDate(cmpD1)}</b> — ${r1.length} người</div>
-        <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">Sau:</span> <b style="color:var(--gold)">${fmtDate(cmpD2)}</b> — ${r2.length} người</div>
+        <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">${T('cmp_date_before_short')}:</span> <b>${fmtDate(cmpD1)}</b> — ${r1.length} ${T('players_count')}</div>
+        <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border-gold);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">${T('cmp_date_after_short')}:</span> <b style="color:var(--gold)">${fmtDate(cmpD2)}</b> — ${r2.length} ${T('players_count')}</div>
       </div>
-      <div class="section-label">Thay Đổi Tổng Cộng</div>
+      <div class="section-label">${T('cmp_total_changes')}</div>
       <div class="cmp-grid">`;
-      totMetrics.forEach(m => { const s1 = tot(r1, m.k), s2 = tot(r2, m.k), diff = s2 - s1, pct = s1 > 0 ? ((diff / s1) * 100).toFixed(1) : '—'; html += `<div class="cmp-card" style="border-top-color:${m.acc}"><div class="cmp-title">${m.l}</div><div class="cmp-row"><span class="cmp-key">Ngày trước</span><span class="cmp-val">${fmtAuto(s1, cmpNumFmt)}</span></div><div class="cmp-row"><span class="cmp-key">Ngày sau</span><span class="cmp-val">${fmtAuto(s2, cmpNumFmt)}</span></div><div class="cmp-row"><span class="cmp-key">Thay đổi</span><span class="cmp-val ${dcls(diff)}">${arrow(diff, cmpNumFmt)} (${pct}%)</span></div></div>`; });
+      totMetrics.forEach(m => { const s1 = tot(r1, m.k), s2 = tot(r2, m.k), diff = s2 - s1, pct = s1 > 0 ? ((diff / s1) * 100).toFixed(1) : '—'; html += `<div class="cmp-card" style="border-top-color:${m.acc}"><div class="cmp-title">${m.l}</div><div class="cmp-row"><span class="cmp-key">${T('cmp_date_before')}</span><span class="cmp-val">${fmtAuto(s1, cmpNumFmt)}</span></div><div class="cmp-row"><span class="cmp-key">${T('cmp_date_after')}</span><span class="cmp-val">${fmtAuto(s2, cmpNumFmt)}</span></div><div class="cmp-row"><span class="cmp-key">${T('cmp_change')}</span><span class="cmp-val ${dcls(diff)}">${arrow(diff, cmpNumFmt)} (${pct}%)</span></div></div>`; });
       html += `</div>`;
 
       // ── Detail table with column picker ──
       const sorted = [..._cmpDiffs].sort((a, b) => cmpSortDir === 'desc' ? b[cmpSortKey] - a[cmpSortKey] : a[cmpSortKey] - b[cmpSortKey]);
       const filtered = filterDiffs(sorted); const isOn = !!cmpSearchQ.trim();
-      const badge = isOn ? (filtered.length === 0 ? '❌ Không tìm thấy' : `<b>${filtered.length}</b> / ${sorted.length} người`) : `<b>${sorted.length}</b> người chơi`;
-      const cmpPicker = makePicker('cmpColPick', CMP_FIXED, CMP_EXTRA, cmpExtraVis, 'onCmpColToggle');
+      const badge = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')}`) : `<b>${sorted.length}</b> ${T('players_count')}`;
+      const cmpPicker = makePicker('cmpColPick', getCmpFixed(), getCmpExtra(), cmpExtraVis, 'onCmpColToggle');
 
       html += `
       <div style="margin-top:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">Chi Tiết Từng Người</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
             <span class="count-badge ${isOn ? 'on' : ''}" id="cmpBadge">${badge}</span>
+            <button class="btn btn-ghost" style="padding:4px 11px;font-size:.78rem;border-color:rgba(240,180,41,.45);color:var(--gold-light);white-space:nowrap" onclick="showExportModal()">📊 Xuất Excel</button>
           </div>
           <div class="flex-row">
             <div class="search-wrap">
-              <input class="search-input" id="cmpSearch" type="text" placeholder="🔍 Tìm người chơi..." value="${cmpSearchQ.replace(/"/g, '&quot;')}" oninput="onCmpSearch(this.value)" autocomplete="off">
+              <input class="search-input" id="cmpSearch" type="text" placeholder="${T('cmp_search')}" value="${cmpSearchQ.replace(/"/g, '&quot;')}" oninput="onCmpSearch(this.value)" autocomplete="off">
               <button class="search-clear ${cmpSearchQ ? 'show' : ''}" id="cmpSearchClear" onclick="onCmpSearch('');document.getElementById('cmpSearch').value='';document.getElementById('cmpSearch').focus()">✕</button>
             </div>
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:105px" onclick="toggleCmpFmt()">${cmpNumFmt === 'short' ? '🔢 Rút gọn' : '🔢 Đầy đủ'}</button>
-            <select style="width:auto" id="cmpSortSel" onchange="setCmpSort(this.value)">${DIFF_SORT_OPTS.map(o => `<option value="${o.v}" ${cmpSortKey === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:105px" onclick="toggleCmpFmt()">${cmpNumFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
+            <select style="width:auto" id="cmpSortSel" onchange="setCmpSort(this.value)">${getDiffSortOpts().map(o => `<option value="${o.v}" ${cmpSortKey === o.v ? 'selected' : ''}>${o.l}</option>`).join('')}</select>
             ${cmpPicker}
           </div>
         </div>
@@ -360,37 +369,39 @@
       </div>`;
 
       // ── Top 10 with column picker ──
-      const top10Picker = makePicker('top10ColPick', [], TOP10_COLS, top10Vis, 'onTop10ColToggle');
+      const top10Picker = makePicker('top10ColPick', [], getTop10Cols(), top10Vis, 'onTop10ColToggle');
       html += `
       <div style="margin-top:22px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-          <div class="section-label" style="margin:0">🏆 Top 10 Theo Chênh Lệch</div>
+          <div class="section-label" style="margin:0">${T('cmp_top10')}</div>
           <div class="flex-row">
-            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem" onclick="toggleTop10Dir()">${top10Dir === 'desc' ? '↓ Cao → Thấp' : '↑ Thấp → Cao'}</button>
+            <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem" onclick="toggleTop10Dir()">${top10Dir === 'desc' ? T('dir_desc') : T('dir_asc')}</button>
             ${top10Picker}
           </div>
         </div>
-        <div class="metric-tabs" id="top10Tabs">${TOP10_METAS.map(m => `<button class="metric-tab ${cmpTop10Key === m.v ? 'active' : ''}" onclick="setCmpTop10('${m.v}')">${m.l}</button>`).join('')}</div>
+        <div class="metric-tabs" id="top10Tabs">${getTop10Metas().map(m => `<button class="metric-tab ${cmpTop10Key === m.v ? 'active' : ''}" onclick="setCmpTop10('${m.v}')">${m.l}</button>`).join('')}</div>
         <div id="top10Body">${buildTop10(_cmpDiffs, cmpTop10Key)}</div>
       </div>`;
 
       el.innerHTML = html;
       if (cmpSearchQ) { const inp = document.getElementById('cmpSearch'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+      initStickyHScroll('cmpTableWrap');
     }
 
     function buildTop10(diffs, key) {
-      const meta = TOP10_METAS.find(m => m.v === key) || TOP10_METAS[0];
+      const _metas = getTop10Metas();
+      const meta = _metas.find(m => m.v === key) || _metas[0];
       const top = [...diffs].sort((a, b) => top10Dir === 'desc' ? b[key] - a[key] : a[key] - b[key]).slice(0, 10);
-      if (!top.length) return `<div class="empty" style="padding:20px">Không có dữ liệu</div>`;
+      if (!top.length) return `<div class="empty" style="padding:20px">${T('no_data_short')}</div>`;
       const showBefore = top10Vis.has('before'), showAfter = top10Vis.has('after'), showDiff = top10Vis.has('diff');
       return `<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0"><div class="table-wrap"><table>
       <thead><tr>
         <th style="width:38px">#</th>
-        <th class="left">Tên</th>
-        <th class="left" style="width:80px">Liên Minh</th>
+        <th class="left">${T('col_name')}</th>
+        <th class="left" style="width:80px">${T('col_alliance')}</th>
         <th class="nosort" style="width:60px">ID</th>
-        ${showBefore ? `<th class="nosort">Trước (${fmtDate(cmpD1)})</th>` : ''}
-        ${showAfter ? `<th class="nosort">Sau (${fmtDate(cmpD2)})</th>` : ''}
+        ${showBefore ? `<th class="nosort">${T('cmp_date_before_short')} (${fmtDate(cmpD1)})</th>` : ''}
+        ${showAfter ? `<th class="nosort">${T('cmp_date_after_short')} (${fmtDate(cmpD2)})</th>` : ''}
         ${showDiff ? `<th class="nosort">+/- ${meta.l.replace('▲ ', '')}</th>` : ''}
       </tr></thead>
       <tbody>${top.map((d, i) => {
@@ -433,7 +444,7 @@
       top10Dir = top10Dir === 'desc' ? 'asc' : 'desc';
       const el = document.getElementById('top10Body'); if (el) el.innerHTML = buildTop10(_cmpDiffs, cmpTop10Key);
       const btn = document.querySelector('#top10Tabs').previousElementSibling?.querySelector('button');
-      if (btn) btn.textContent = top10Dir === 'desc' ? '↓ Cao → Thấp' : '↑ Thấp → Cao';
+      if (btn) btn.textContent = top10Dir === 'desc' ? T('dir_desc') : T('dir_asc');
     };
 
     window.setCmpTop10 = key => {
@@ -447,7 +458,7 @@
       const d = _cmpDiffs.find(x => x.id == id); if (!d) return;
       document.getElementById('diffModalTitle').textContent = `⚔️ ${d.name}`;
       document.getElementById('diffModalSub').textContent = `[${d.alliance}] · ID: ${d.id} · ${fmtDate(cmpD1)} → ${fmtDate(cmpD2)}`;
-      const allRows = DIFF_SECTIONS.map(sec => {
+      const allRows = getDiffSections().map(sec => {
         const hdr = `<tr><td colspan="4" style="padding:10px 10px 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-dim);border-bottom:1px solid var(--border);border-top:1px solid var(--border)">${sec.t}</td></tr>`;
         const drows = sec.fields.map(([label, field, isPct]) => {
           const va = d.a[field] || 0, vb = d.b[field] || 0, diff = vb - va;
@@ -468,12 +479,293 @@
           <th style="padding:8px 10px;text-align:left;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);width:30%"></th>
           <th style="padding:8px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:rgba(42,48,80,.4);border:1px solid var(--border);border-radius:4px;color:var(--text-dim)">📅 ${fmtDate(cmpD1)}</th>
           <th style="padding:8px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:rgba(240,180,41,.07);border:1px solid var(--border-gold);border-radius:4px;color:var(--gold)">📅 ${fmtDate(cmpD2)}</th>
-          <th style="padding:8px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:rgba(61,255,160,.07);border:1px solid rgba(61,255,160,.2);border-radius:4px;color:var(--green)">📊 Chênh Lệch</th>
+          <th style="padding:8px 12px;text-align:right;font-size:.72rem;letter-spacing:1px;background:rgba(61,255,160,.07);border:1px solid rgba(61,255,160,.2);border-radius:4px;color:var(--green)">${T('diff_col_diff')}</th>
         </tr></thead>
         <tbody>${allRows}</tbody>
       </table>
       <div style="font-size:.75rem;color:var(--text-dim);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        💡 Tất cả số hiển thị dạng <b style="color:var(--gold)">đầy đủ</b> · Trước → Sau → Chênh lệch
+        ${T('diff_tip')}
       </div>`;
       document.getElementById('diffModal').classList.add('open');
+    };
+
+    // ── Sticky horizontal scrollbar ──
+    function initStickyHScroll(wrapId) {
+      const wrap = document.getElementById(wrapId);
+      if (!wrap) return;
+      const bar = document.createElement('div');
+      bar.className = 'sticky-hscroll';
+      const inner = document.createElement('div');
+      bar.appendChild(inner);
+      wrap.parentElement.insertAdjacentElement('afterend', bar);
+      const syncWidth = () => {
+        inner.style.width = wrap.scrollWidth + 'px';
+        bar.style.display = wrap.scrollWidth > wrap.clientWidth ? 'block' : 'none';
+      };
+      syncWidth();
+      let lock = false;
+      bar.addEventListener('scroll', () => { if (!lock) { lock = true; wrap.scrollLeft = bar.scrollLeft; lock = false; } });
+      wrap.addEventListener('scroll', () => { if (!lock) { lock = true; bar.scrollLeft = wrap.scrollLeft; lock = false; } });
+      new ResizeObserver(syncWidth).observe(wrap);
+    }
+
+    // ══════════════════════════════════════════════
+    // Export to Excel
+    // ══════════════════════════════════════════════
+    const _EH = 'a1cde3236ffa871b590111e71f93f29a570556af87319facbaaee5cd4d3fcbbf';
+    async function _hp(p) {
+      const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
+      return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    // Diff-based columns (chênh lệch giữa 2 ngày)
+    const EXPORT_COLS_DEF = () => [
+      { k: 'id',    label: 'ID',                                  field: 'id',    w: 10, num: false, def: true },
+      { k: 'name',  label: T('col_name'),                         field: 'name',  w: 22, num: false, def: true },
+      { k: 'alliance', label: T('col_alliance'),                  field: 'alliance', w: 12, num: false, def: false },
+      { k: 'dm',    label: '+/- ' + T('col_merit'),               field: 'dm',    w: 18, num: true, def: true, sortDef: true },
+      { k: 'dp',    label: '+/- ' + T('col_power'),               field: 'dp',    w: 18, num: true, def: true },
+      { k: 'dk',    label: '+/- ' + T('col_kill'),                field: 'dk',    w: 18, num: true, def: true },
+      { k: 'dd',    label: '+/- ' + T('col_dead'),                field: 'dd',    w: 15, num: true, def: true },
+      { k: 'dh',    label: '+/- ' + T('col_heal'),                field: 'dh',    w: 18, num: true, def: true },
+      { k: 'dn',    label: '+/- ' + T('col_mana_spend'),          field: 'dn',    w: 18, num: true, def: true },
+      { k: 'dgs',   label: '+/- ' + T('col_gold_spend'),          field: 'dgs',   w: 18, num: true, def: false },
+      { k: 'dws',   label: '+/- ' + T('col_wood_spend'),          field: 'dws',   w: 18, num: true, def: false },
+      { k: 'dss',   label: '+/- ' + T('col_stone_spend'),         field: 'dss',   w: 18, num: true, def: false },
+      { k: 'dges',  label: '+/- ' + T('col_gem_spend'),           field: 'dges',  w: 15, num: true, def: false },
+      { k: 'dgg',   label: '+/- ' + T('col_gold_gather'),         field: 'dgg',   w: 18, num: true, def: false },
+      { k: 'dwg',   label: '+/- ' + T('col_wood_gather'),         field: 'dwg',   w: 18, num: true, def: false },
+      { k: 'dsg',   label: '+/- ' + T('col_stone_gather'),        field: 'dsg',   w: 18, num: true, def: false },
+      { k: 'dmg',   label: '+/- ' + T('col_mana_gather'),         field: 'dmg',   w: 18, num: true, def: false },
+      { k: 'dgeg',  label: '+/- ' + T('col_gem_gather'),          field: 'dgeg',  w: 15, num: true, def: false },
+    ];
+
+    window.showExportModal = () => {
+      closeExport();
+      const ov = document.createElement('div');
+      ov.id = 'exportOverlay';
+      ov.className = 'modal-overlay open';
+      ov.onclick = e => { if (e.target === ov) closeExport(); };
+      ov.innerHTML = `
+        <div class="modal" style="max-width:600px">
+          <div class="modal-header">
+            <div>
+              <div style="font-size:1.05rem;color:var(--gold)">📊 Xuất Danh Sách Excel</div>
+              <div style="font-size:.8rem;color:var(--text-dim);margin-top:3px" id="exportSubtitle">Nhập mật khẩu để tiếp tục</div>
+            </div>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem;flex-shrink:0" onclick="closeExport()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div id="exportStep1">
+              <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mật Khẩu</div>
+              <div style="display:flex;gap:8px">
+                <div style="position:relative;flex:1">
+                  <input type="password" id="exportPwdInput" placeholder="Nhập mật khẩu..." style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyExportPwd()">
+                  <button onclick="const i=document.getElementById('exportPwdInput');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px">👁</button>
+                </div>
+                <button class="btn btn-primary" onclick="verifyExportPwd()">Xác Nhận</button>
+              </div>
+              <div id="exportPwdErr" style="color:var(--red);font-size:.85rem;margin-top:8px;display:none">❌ Mật khẩu không đúng!</div>
+            </div>
+            <div id="exportStep2" style="display:none"></div>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      setTimeout(() => document.getElementById('exportPwdInput')?.focus(), 80);
+    };
+
+    window.closeExport = () => { document.getElementById('exportOverlay')?.remove(); };
+
+    window.verifyExportPwd = async () => {
+      const inp = document.getElementById('exportPwdInput');
+      const errEl = document.getElementById('exportPwdErr');
+      if (!inp) return;
+      inp.disabled = true;
+      const hash = await _hp(inp.value);
+      inp.disabled = false;
+      if (hash !== _EH) {
+        errEl.style.display = 'block';
+        inp.value = ''; inp.focus();
+        return;
+      }
+      errEl.style.display = 'none';
+      document.getElementById('exportStep1').style.display = 'none';
+      document.getElementById('exportSubtitle').textContent = 'Chọn cột và tùy chọn xuất';
+      const step2 = document.getElementById('exportStep2');
+      step2.style.display = 'block';
+      _renderExportCols(step2);
+    };
+
+    function _renderExportCols(container) {
+      const cols = EXPORT_COLS_DEF();
+      const sortCols = cols.filter(c => c.num);
+      const srv = cmpSrv || '?';
+      const dt = cmpD1 && cmpD2 ? `${fmtDate(cmpD1)} → ${fmtDate(cmpD2)}` : '—';
+      container.innerHTML = `
+        <div style="margin-bottom:14px">
+          <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📋 Chọn Cột Xuất</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">
+            ${cols.map(c => `<label style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--bg3);border:1px solid ${c.def ? 'var(--border-gold)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-size:.86rem" id="elbl_${c.k}">
+              <input type="checkbox" id="ecol_${c.k}" ${c.def ? 'checked' : ''} style="accent-color:var(--gold);width:14px;height:14px;flex-shrink:0" onchange="document.getElementById('elbl_${c.k}').style.borderColor=this.checked?'var(--border-gold)':'var(--border)'">
+              <span>${c.label}</span>
+            </label>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px">
+          <div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📊 Sắp xếp theo</div>
+            <select id="exportSortCol" style="width:auto">${sortCols.map(c => `<option value="${c.field}" ${c.sortDef ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">↕ Thứ tự</div>
+            <select id="exportSortDir" style="width:auto">
+              <option value="desc" selected>↓ Cao → Thấp</option>
+              <option value="asc">↑ Thấp → Cao</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px;text-align:right">
+            <div style="font-size:.75rem;color:var(--text-dim)">Dữ liệu xuất (chênh lệch):</div>
+            <div style="font-size:.85rem;color:var(--gold);font-weight:600">Server ${srv} · ${dt}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="closeExport()">Hủy</button>
+          <button class="btn btn-primary" onclick="runExport()">⬇️ Xuất File Excel</button>
+        </div>`;
+    }
+
+    window.runExport = () => {
+      const selectedCols = EXPORT_COLS_DEF().filter(c => document.getElementById('ecol_' + c.k)?.checked);
+      if (!selectedCols.length) { alert('Vui lòng chọn ít nhất 1 cột!'); return; }
+      const sortField = document.getElementById('exportSortCol')?.value || 'dm';
+      const sortDir = document.getElementById('exportSortDir')?.value || 'desc';
+      if (!_cmpDiffs.length) { alert('Vui lòng chọn 2 ngày để so sánh trước!'); return; }
+      const sorted = [..._cmpDiffs].sort((a, b) => {
+        const va = +a[sortField] || 0, vb = +b[sortField] || 0;
+        return sortDir === 'desc' ? vb - va : va - vb;
+      });
+      _doExcelExport(sorted, selectedCols);
+      closeExport();
+    };
+
+    function _doExcelExport(sorted, cols) {
+      const XLSXlib = window.XLSX;
+      if (!XLSXlib) { alert('Thư viện XLSX chưa tải xong, vui lòng thử lại!'); return; }
+
+      const srv = cmpSrv || '?';
+      const d1str = cmpD1 || '';
+      const d2str = cmpD2 || '';
+      const dtFile = `${d1str.replace(/-/g, '')}_${d2str.replace(/-/g, '')}`;
+      const sheetName = `S${srv} Diff`.substring(0, 31);
+
+      // Header style — dark blue bg, white bold text, center
+      const hStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { fgColor: { rgb: '1F3864' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border: { top: { style: 'thin', color: { rgb: '2E4272' } }, bottom: { style: 'thin', color: { rgb: '2E4272' } }, left: { style: 'thin', color: { rgb: '2E4272' } }, right: { style: 'thin', color: { rgb: '2E4272' } } }
+      };
+      const hStyleL = { ...hStyle, alignment: { ...hStyle.alignment, horizontal: 'left' } };
+
+      // Row fill colors
+      const rowFills = [
+        { rgb: 'FFD700' }, // gold #1
+        { rgb: 'BFBFBF' }, // silver #2
+        { rgb: 'F4C270' }, // bronze #3
+      ];
+      const evenFill = { rgb: 'EEF2FF' };
+      const oddFill  = { rgb: 'FFFFFF' };
+
+      const cellBorder = { top: { style: 'thin', color: { rgb: 'D9E1F2' } }, bottom: { style: 'thin', color: { rgb: 'D9E1F2' } }, left: { style: 'thin', color: { rgb: 'D9E1F2' } }, right: { style: 'thin', color: { rgb: 'D9E1F2' } } };
+
+      function dataCellStyle(isNum, value, rowIdx) {
+        const fill = { fgColor: rowIdx < 3 ? rowFills[rowIdx] : (rowIdx % 2 === 0 ? evenFill : oddFill) };
+        const bold = rowIdx < 3;
+        const color = isNum && typeof value === 'number'
+          ? (value > 0 ? '2E7D32' : value < 0 ? 'C62828' : '555555')
+          : '1A1A2E';
+        return {
+          font: { bold, color: { rgb: color }, sz: 10 },
+          fill,
+          alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
+          border: cellBorder,
+          numFmt: isNum ? '#,##0' : '@'
+        };
+      }
+
+      // Build rows
+      const aoa = []; // array of arrays for cell values
+      const styles = []; // parallel array of style rows
+
+      // Header row
+      const hdrVals = ['#', ...cols.map(c => c.label)];
+      const hdrStyles = [hStyle, ...cols.map(c => c.num ? hStyle : hStyleL)];
+      aoa.push(hdrVals);
+      styles.push(hdrStyles);
+
+      sorted.forEach((r, i) => {
+        const vals = [i + 1];
+        const rowStyles = [{ ...dataCellStyle(true, i + 1, i), alignment: { horizontal: 'center', vertical: 'center' }, numFmt: '0' }];
+        cols.forEach(c => {
+          let v = r[c.field];
+          if (c.num) {
+            v = (v == null || v === '') ? 0 : +v || 0;
+          } else {
+            v = v != null ? String(v) : '';
+          }
+          vals.push(v);
+          rowStyles.push(dataCellStyle(c.num, c.num ? v : 0, i));
+        });
+        aoa.push(vals);
+        styles.push(rowStyles);
+      });
+
+      // Build worksheet from aoa
+      const ws = XLSXlib.utils.aoa_to_sheet(aoa);
+
+      // Apply styles cell by cell
+      const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      styles.forEach((rowS, ri) => {
+        rowS.forEach((s, ci) => {
+          const col = ci < 26 ? alpha[ci] : alpha[Math.floor(ci / 26) - 1] + alpha[ci % 26];
+          const cellAddr = `${col}${ri + 1}`;
+          if (!ws[cellAddr]) ws[cellAddr] = { v: aoa[ri][ci], t: typeof aoa[ri][ci] === 'number' ? 'n' : 's' };
+          ws[cellAddr].s = s;
+          if (s.numFmt && typeof aoa[ri][ci] === 'number') ws[cellAddr].z = s.numFmt;
+        });
+      });
+
+      // Column widths
+      ws['!cols'] = [{ wch: 5 }, ...cols.map(c => ({ wch: c.w }))];
+
+      // Freeze first row
+      ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+
+      // Autofilter on header row
+      const lastCol = alpha[cols.length] || alpha[cols.length % 26];
+      ws['!autofilter'] = { ref: `A1:${lastCol}1` };
+
+      // Set worksheet range
+      ws['!ref'] = XLSXlib.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sorted.length, c: cols.length } });
+
+      const wb = XLSXlib.utils.book_new();
+      XLSXlib.utils.book_append_sheet(wb, ws, sheetName);
+
+      // Title info sheet
+      const infoWs = XLSXlib.utils.aoa_to_sheet([
+        ['Alliance Tracker — Chênh Lệch 2 Ngày'],
+        [`Server: ${srv}`],
+        [`Ngày trước: ${fmtDate(d1str)}`],
+        [`Ngày sau: ${fmtDate(d2str)}`],
+        [`Xuất lúc: ${new Date().toLocaleString('vi-VN')}`],
+      ]);
+      XLSXlib.utils.book_append_sheet(wb, infoWs, 'Info');
+
+      XLSXlib.writeFile(wb, `Alliance_S${srv}_${dtFile}.xlsx`);
+    }
+
+    // ── Language toggle ──
+    window.toggleLang = () => {
+      setLang(getLang() === 'vi' ? 'en' : 'vi');
+      renderAll();
     };

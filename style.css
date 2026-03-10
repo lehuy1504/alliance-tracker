@@ -416,6 +416,30 @@
       -webkit-overflow-scrolling: touch
     }
 
+    /* Sticky table header */
+    .table-wrap thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--bg3)
+    }
+
+    /* Sticky horizontal scrollbar floating at bottom of viewport */
+    .sticky-hscroll {
+      position: sticky;
+      bottom: 0;
+      overflow-x: auto;
+      height: 14px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      z-index: 50;
+      display: none
+    }
+
+    .sticky-hscroll > div {
+      height: 1px
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
