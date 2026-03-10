@@ -263,13 +263,13 @@
 
     // ════════════════════════════════════
     // TAB: SO SÁNH
-    // ═���══════════════════════════════════
+    // ════════════════════════════════════
     const DIFF_SORT_OPTS = [
       { v: 'dm', l: 'Công Trạng' }, { v: 'dp', l: 'Lực Chiến' }, { v: 'dk', l: 'Tiêu Diệt' },
       { v: 'dd', l: 'Tử Trận' }, { v: 'dh', l: 'Chữa Lính' }, { v: 'dn', l: 'Tiêu Mana' },
       { v: 'dgs', l: 'Vàng Tiêu' }, { v: 'dws', l: 'Gỗ Tiêu' }, { v: 'dss', l: 'Đá Tiêu' },
       { v: 'dges', l: 'Gem Tiêu' }, { v: 'dgg', l: 'Vàng Thu' }, { v: 'dwg', l: 'Gỗ Thu' },
-      { v: 'dsg', l: 'Đ�� Thu' }, { v: 'dmg', l: 'Mana Thu' }, { v: 'dgeg', l: 'Gem Thu' },
+      { v: 'dsg', l: 'Đá Thu' }, { v: 'dmg', l: 'Mana Thu' }, { v: 'dgeg', l: 'Gem Thu' },
     ];
     const TOP10_METAS = [
       { v: 'dm', l: '▲ Công Trạng', field: 'merit' }, { v: 'dk', l: '▲ Tiêu Diệt', field: 'kill' },

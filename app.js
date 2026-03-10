@@ -252,12 +252,12 @@
     const TOP10_METAS = [
       { v: 'dm', l: '▲ Công Trạng', field: 'merit' }, { v: 'dk', l: '▲ Tiêu Diệt', field: 'kill' },
       { v: 'dh', l: '▲ Chữa Lính', field: 'heal' }, { v: 'dd', l: '▲ Tử Trận', field: 'dead' },
-      { v: 'dp', l: '▲ L��c Chiến', field: 'power' }, { v: 'dn', l: '▲ Tiêu Mana', field: 'manaSpend' },
+      { v: 'dp', l: '▲ Lực Chiến', field: 'power' }, { v: 'dn', l: '▲ Tiêu Mana', field: 'manaSpend' },
       { v: 'dmg', l: '▲ Thu Mana', field: 'manaGather' },
     ];
     const DIFF_SECTIONS = [
-      { t: '⚔️ Chiến ��ấu', fields: [['Công Trạng', 'merit'], ['Tỉ Lệ CT', 'meritRate', true], ['Lực Chiến', 'power'], ['Lực Chiến Max', 'powerMax'], ['Tiêu Diệt', 'kill'], ['Tử Trận', 'dead'], ['Chữa Lính', 'heal']] },
-      { t: '💰 Tiêu Thụ', fields: [['Vàng', 'goldSpend'], ['Gỗ', 'woodSpend'], ['��á', 'stoneSpend'], ['Mana', 'manaSpend'], ['Gem', 'gemSpend']] },
+      { t: '⚔️ Chiến Đấu', fields: [['Công Trạng', 'merit'], ['Tỉ Lệ CT', 'meritRate', true], ['Lực Chiến', 'power'], ['Lực Chiến Max', 'powerMax'], ['Tiêu Diệt', 'kill'], ['Tử Trận', 'dead'], ['Chữa Lính', 'heal']] },
+      { t: '💰 Tiêu Thụ', fields: [['Vàng', 'goldSpend'], ['Gỗ', 'woodSpend'], ['Đá', 'stoneSpend'], ['Mana', 'manaSpend'], ['Gem', 'gemSpend']] },
       { t: '🌾 Thu Thập', fields: [['Vàng', 'goldGather'], ['Gỗ', 'woodGather'], ['Đá', 'stoneGather'], ['Mana', 'manaGather'], ['Gem', 'gemGather']] },
     ];
 
