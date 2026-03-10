@@ -1,10 +1,11 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyCp6L4C-4KhZNm67VpC3hu7ws_n2C5XTfA", authDomain: "alliance-tracker-ddc87.firebaseapp.com", databaseURL: "https://alliance-tracker-ddc87-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "alliance-tracker-ddc87", storageBucket: "alliance-tracker-ddc87.firebasestorage.app", messagingSenderId: "910735026600", appId: "1:910735026600:web:d2199d026f1e476cb4d59d" };
-    const fbApp = initializeApp(firebaseConfig), fbDB = getDatabase(fbApp);
+    const fbApp = initializeApp(firebaseConfig), fbDB = getDatabase(fbApp), fbAuth = getAuth(fbApp);
 
-    let DATA = {}, curServer = null, curDate = null;
+    let DATA = {}, isAdmin = false, curServer = null, curDate = null;
     let activeTab = 'view', sortCol = 'merit', sortDir = 'desc', numFmt = 'short', searchQuery = '';
     let cmpSrv = null, cmpD1 = null, cmpD2 = null;
     let cmpNumFmt = 'short', cmpSortKey = 'dm', cmpSortDir = 'desc', cmpSearchQ = '', cmpTop10Key = 'dm', top10Dir = 'desc';
@@ -138,12 +139,23 @@
     // ══════════════════════════════════════════════
     // Firebase
     // ══════════════════════════════════════════════
+    onAuthStateChanged(fbAuth, user => {
+      isAdmin = !!user;
+      if (isAdmin) { document.getElementById('loginModal').classList.remove('open'); if (activeTab === 'view') activeTab = 'import'; }
+      else { if (['import', 'manage'].includes(activeTab)) activeTab = 'view'; }
+      renderAll(); showTab(activeTab);
+    });
     onValue(ref(fbDB, 'servers'), snap => {
       DATA = snap.val() || {};
       document.getElementById('loadingScreen').style.display = 'none';
       renderAll();
-      showTab(activeTab);
     });
+    async function saveData(p, v) { document.getElementById('savingBadge').style.display = ''; try { await set(ref(fbDB, p), v); } catch (e) { alert('Lỗi lưu: ' + e.message); } document.getElementById('savingBadge').style.display = 'none'; }
+    async function removeData(p) { document.getElementById('savingBadge').style.display = ''; try { await remove(ref(fbDB, p)); } catch (e) { alert('Lỗi xóa: ' + e.message); } document.getElementById('savingBadge').style.display = 'none'; }
+
+    window.openLoginModal = () => { document.getElementById('loginEmail').value = ''; document.getElementById('loginPassword').value = ''; document.getElementById('loginError').style.display = 'none'; document.getElementById('loginModal').classList.add('open'); setTimeout(() => document.getElementById('loginEmail').focus(), 100); };
+    window.doLogin = async () => { const email = document.getElementById('loginEmail').value.trim(), pw = document.getElementById('loginPassword').value, err = document.getElementById('loginError'), btn = document.getElementById('loginBtn'); if (!email || !pw) { err.textContent = 'Vui lòng nhập đầy đủ!'; err.style.display = ''; return; } btn.textContent = 'Đang đăng nhập...'; btn.disabled = true; err.style.display = 'none'; try { await signInWithEmailAndPassword(fbAuth, email, pw); } catch (e) { const m = { 'auth/invalid-credential': 'Sai email hoặc mật khẩu!', 'auth/wrong-password': 'Sai email hoặc mật khẩu!', 'auth/user-not-found': 'Email không tồn tại!', 'auth/too-many-requests': 'Quá nhiều lần thử!', 'auth/invalid-email': 'Email không hợp lệ!' }; err.textContent = m[e.code] || 'Đăng nhập thất bại!'; err.style.display = ''; } btn.textContent = 'Đăng Nhập'; btn.disabled = false; };
+    window.doLogout = async () => { await signOut(fbAuth); };
 
     const fmtNum = n => { if (!n || isNaN(n)) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return Number(n).toLocaleString(); };
     const fmtFull = n => { if (!n || isNaN(n)) return '0'; return Number(n).toLocaleString('de-DE'); };
@@ -153,11 +165,21 @@
     const dcls = v => v > 0 ? 'pos' : v < 0 ? 'neg' : '';
     function hl(t, q) { if (!q) return String(t); const e = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return String(t).replace(new RegExp(e, 'gi'), m => `<span class="hl">${m}</span>`); }
 
-    function renderAll() { renderTabBar(); renderTab(activeTab); }
-    function renderTabBar() { const tabs = [['view', '📊 Xem Dữ Liệu'], ['compare', '🔄 So Sánh']]; document.getElementById('tabBar').innerHTML = tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join(''); }
-    function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); }
+    function renderAll() { renderTabBar(); renderAdminArea(); renderTab(activeTab); }
+    function renderTabBar() { const tabs = isAdmin ? [['view', '📊 Xem Dữ Liệu'], ['compare', '🔄 So Sánh'], ['import', '📥 Nhập Dữ Liệu'], ['manage', '⚙️ Quản Lý']] : [['view', '📊 Xem Dữ Liệu'], ['compare', '🔄 So Sánh']]; document.getElementById('tabBar').innerHTML = tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join(''); }
+    function renderAdminArea() { document.getElementById('adminArea').innerHTML = isAdmin ? `<span style="font-size:.78rem;color:var(--green);margin-right:4px">🔓 Admin</span><button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;color:var(--red);border-color:rgba(255,68,85,.3)" onclick="doLogout()">Đăng Xuất</button>` : `<button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem" onclick="openLoginModal()">🔒 Admin</button>`; }
+    function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); if (name === 'import' && isAdmin) renderImport(); if (name === 'manage' && isAdmin) renderManage(); }
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
 
+    function parseRaw(raw) {
+      const sm = raw.match(/Thông tin server[:\s]+(\d+)/i); if (!sm) throw new Error('Không tìm thấy số server');
+      const dm = raw.match(/Dữ liệu được lấy lúc[:\s]+(\d+)\/(\d+)\/(\d+)/i); if (!dm) throw new Error('Không tìm thấy ngày');
+      const dateKey = `${dm[3]}-${dm[2].padStart(2, '0')}-${dm[1].padStart(2, '0')}`;
+      const rows = []; const re = /\{([^}]+)\}/g; let m;
+      while ((m = re.exec(raw)) !== null) { const p = m[1].split(',').map(s => s.trim().replace(/^"|"$/g, '')); if (p.length < 20) continue; const n = i => { const x = parseFloat(p[i].replace(/[^0-9.-]/g, '')); return isNaN(x) ? 0 : x; }; const s = i => p[i].replace(/"/g, '').trim(); rows.push({ id: s(0), name: s(1), alliance: s(2), merit: n(3), power: n(4), powerMax: n(5), meritRate: n(6), dead: n(7), heal: n(8), kill: n(9), goldSpend: n(10), woodSpend: n(11), stoneSpend: n(12), manaSpend: n(13), gemSpend: n(14), goldGather: n(15), woodGather: n(16), stoneGather: n(17), manaGather: n(18), gemGather: n(19) }); }
+      if (!rows.length) throw new Error('Không tìm thấy dữ liệu người chơi');
+      return { server: sm[1], dateKey, rows };
+    }
 
     // ════════════════════════════════════
     // TAB: XEM DỮ LIỆU
@@ -180,7 +202,7 @@
       else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}</div><div class="server-sub">Server ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ngày</div></div>`).join('')}</div>`;
       html += `</div>`;
       if (curServer && dates.length) {
-        html += `<div class="panel"><div class="panel-title">📅 Chọn Ngày</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
+        html += `<div class="panel"><div class="panel-title">📅 Chọn Ngày</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}${isAdmin ? `<button class="chip-del" onclick="event.stopPropagation();deleteDate('${curServer}','${d}')">✕</button>` : ''}</div>`).join('')}</div></div>`;
         if (rows.length) {
           const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
@@ -241,23 +263,23 @@
 
     // ════════════════════════════════════
     // TAB: SO SÁNH
-    // ════════════════════════════════════
+    // ═���══════════════════════════════════
     const DIFF_SORT_OPTS = [
       { v: 'dm', l: 'Công Trạng' }, { v: 'dp', l: 'Lực Chiến' }, { v: 'dk', l: 'Tiêu Diệt' },
       { v: 'dd', l: 'Tử Trận' }, { v: 'dh', l: 'Chữa Lính' }, { v: 'dn', l: 'Tiêu Mana' },
       { v: 'dgs', l: 'Vàng Tiêu' }, { v: 'dws', l: 'Gỗ Tiêu' }, { v: 'dss', l: 'Đá Tiêu' },
       { v: 'dges', l: 'Gem Tiêu' }, { v: 'dgg', l: 'Vàng Thu' }, { v: 'dwg', l: 'Gỗ Thu' },
-      { v: 'dsg', l: 'Đá Thu' }, { v: 'dmg', l: 'Mana Thu' }, { v: 'dgeg', l: 'Gem Thu' },
+      { v: 'dsg', l: 'Đ�� Thu' }, { v: 'dmg', l: 'Mana Thu' }, { v: 'dgeg', l: 'Gem Thu' },
     ];
     const TOP10_METAS = [
       { v: 'dm', l: '▲ Công Trạng', field: 'merit' }, { v: 'dk', l: '▲ Tiêu Diệt', field: 'kill' },
       { v: 'dh', l: '▲ Chữa Lính', field: 'heal' }, { v: 'dd', l: '▲ Tử Trận', field: 'dead' },
-      { v: 'dp', l: '▲ L��c Chiến', field: 'power' }, { v: 'dn', l: '▲ Tiêu Mana', field: 'manaSpend' },
+      { v: 'dp', l: '▲ Lực Chiến', field: 'power' }, { v: 'dn', l: '▲ Tiêu Mana', field: 'manaSpend' },
       { v: 'dmg', l: '▲ Thu Mana', field: 'manaGather' },
     ];
     const DIFF_SECTIONS = [
-      { t: '⚔️ Chiến ��ấu', fields: [['Công Trạng', 'merit'], ['Tỉ Lệ CT', 'meritRate', true], ['Lực Chiến', 'power'], ['Lực Chiến Max', 'powerMax'], ['Tiêu Diệt', 'kill'], ['Tử Trận', 'dead'], ['Chữa Lính', 'heal']] },
-      { t: '💰 Tiêu Thụ', fields: [['Vàng', 'goldSpend'], ['Gỗ', 'woodSpend'], ['��á', 'stoneSpend'], ['Mana', 'manaSpend'], ['Gem', 'gemSpend']] },
+      { t: '⚔️ Chiến Đấu', fields: [['Công Trạng', 'merit'], ['Tỉ Lệ CT', 'meritRate', true], ['Lực Chiến', 'power'], ['Lực Chiến Max', 'powerMax'], ['Tiêu Diệt', 'kill'], ['Tử Trận', 'dead'], ['Chữa Lính', 'heal']] },
+      { t: '💰 Tiêu Thụ', fields: [['Vàng', 'goldSpend'], ['Gỗ', 'woodSpend'], ['Đá', 'stoneSpend'], ['Mana', 'manaSpend'], ['Gem', 'gemSpend']] },
       { t: '🌾 Thu Thập', fields: [['Vàng', 'goldGather'], ['Gỗ', 'woodGather'], ['Đá', 'stoneGather'], ['Mana', 'manaGather'], ['Gem', 'gemGather']] },
     ];
 
@@ -477,3 +499,18 @@
       </div>`;
       document.getElementById('diffModal').classList.add('open');
     };
+
+    // ════════════════════════════════════
+    // TAB: IMPORT
+    // ════════════════════════════════════
+    function renderImport() { document.getElementById('tab-import').innerHTML = `<div class="panel"><div class="panel-title">📥 Nhập Dữ Liệu Mới</div><textarea id="importTxt" placeholder="Dán dữ liệu từ Tabi vào đây...&#10;&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 9/3/2026&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }"></textarea><div style="font-size:.8rem;color:var(--text-dim);margin-top:7px;line-height:1.7"><b style="color:var(--gold)">Ngày trùng</b> → thay thế &nbsp;·&nbsp; <b style="color:var(--green)">Ngày mới</b> → thêm lịch sử</div><div class="flex-row" style="margin-top:12px"><button class="btn btn-primary" onclick="doImport()">⚔️ Nhập Dữ Liệu</button><button class="btn btn-ghost" onclick="document.getElementById('importTxt').value='';document.getElementById('importStatus').className='status'">🗑 Xóa</button></div><div id="importStatus" class="status"></div></div><div class="panel"><div class="panel-title">📋 Hướng Dẫn</div><div style="font-size:.85rem;color:var(--text-dim);line-height:2.1">1️⃣ Lấy dữ liệu từ Tabi mỗi ngày, dán vào ô trên<br>2️⃣ Nhấn <b style="color:var(--gold)">Nhập Dữ Liệu</b> — tự nhận server &amp; ngày<br>3️⃣ Lưu Firebase — mọi người thấy ngay lập tức<br>4️⃣ Người dùng thường chỉ thấy Xem &amp; So Sánh</div></div>`; }
+    window.doImport = async () => { const raw = document.getElementById('importTxt').value.trim(); const st = document.getElementById('importStatus'); if (!raw) { st.className = 'status error show'; st.textContent = 'Vui lòng dán dữ liệu vào ô trên!'; return; } try { const { server, dateKey, rows } = parseRaw(raw); const isReplace = !!(DATA[server]?.[dateKey]); await saveData(`servers/${server}/${dateKey}`, rows); st.className = 'status success show'; st.textContent = `${isReplace ? '🔄 Đã thay thế' : '✅ Đã thêm mới'} Server ${server} ngày ${fmtDate(dateKey)} — ${rows.length} người chơi`; document.getElementById('importTxt').value = ''; setTimeout(() => { if (st) st.className = 'status'; }, 5000); } catch (e) { st.className = 'status error show'; st.textContent = '❌ ' + e.message; } };
+
+    // ════════════════════════════════════
+    // TAB: MANAGE
+    // ════════════════════════════════════
+    function renderManage() { const servers = Object.keys(DATA).sort((a, b) => +a - +b); let html = `<div class="panel"><div class="panel-title">⚙️ Quản Lý Dữ Liệu</div>`; if (!servers.length) { html += `<div class="empty">Chưa có dữ liệu</div>`; } else { html += servers.map(s => { const dates = Object.keys(DATA[s]).sort(); const total = Object.values(DATA[s]).reduce((sum, r) => sum + r.length, 0); return `<div class="manage-server"><div class="flex-row" style="justify-content:space-between;margin-bottom:10px"><div><span style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--gold)">Server ${s}</span><span style="color:var(--text-dim);font-size:.8rem;margin-left:10px">${dates.length} ngày · ${total} bản ghi</span></div><button class="btn btn-danger" style="padding:5px 12px;font-size:.82rem" onclick="deleteServer('${s}')">🗑 Xóa Server</button></div><div class="date-list">${dates.map(d => `<div class="chip">📅 ${fmtDate(d)} (${DATA[s][d].length})<button class="chip-del" onclick="deleteDate('${s}','${d}')">✕</button></div>`).join('')}</div></div>`; }).join(''); } html += `</div><div class="panel"><div class="panel-title">💾 Backup</div><div class="flex-row"><button class="btn btn-ghost" onclick="exportData()">⬇️ Xuất JSON</button></div><div style="font-size:.8rem;color:var(--text-dim);margin-top:8px">Backup dữ liệu ra file JSON dự phòng.</div><div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)"><button class="btn btn-danger" onclick="clearAll()">🗑 Xóa Toàn Bộ</button></div></div>`; document.getElementById('tab-manage').innerHTML = html; }
+    window.deleteDate = async (s, d) => { if (!confirm(`Xóa Server ${s} ngày ${fmtDate(d)}?`)) return; await removeData(`servers/${s}/${d}`); if (curServer === s && curDate === d) curDate = null; };
+    window.deleteServer = async s => { if (!confirm(`Xóa toàn bộ Server ${s}? Không thể hoàn tác!`)) return; await removeData(`servers/${s}`); if (curServer === s) { curServer = null; curDate = null; } };
+    window.clearAll = async () => { if (!confirm('Xóa TOÀN BỘ? Không thể hoàn tác!')) return; await removeData('servers'); };
+    window.exportData = () => { const b = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); };

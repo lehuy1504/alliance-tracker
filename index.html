@@ -26,8 +26,6 @@
     </div>
     <div id="tab-view" class="tab-content" style="display:none"></div>
     <div id="tab-compare" class="tab-content" style="display:none"></div>
-    <div id="tab-import" class="tab-content" style="display:none"></div>
-    <div id="tab-manage" class="tab-content" style="display:none"></div>
   </div>
 
   <!-- PLAYER DETAIL MODAL -->
@@ -60,40 +58,9 @@
     </div>
   </div>
 
-  <!-- LOGIN MODAL -->
-  <div class="modal-overlay" id="loginModal" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal" style="max-width:380px">
-      <div class="modal-header">
-        <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold)">🔐 Đăng Nhập Admin</div>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem"
-          onclick="document.getElementById('loginModal').classList.remove('open')">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="auth-field">
-          <div class="auth-label">Email</div><input type="email" id="loginEmail" placeholder="your@email.com"
-            onkeydown="if(event.key==='Enter')doLogin()">
-        </div>
-        <div class="auth-field">
-          <div class="auth-label">Mật Khẩu</div><input type="password" id="loginPassword" placeholder="••••••••"
-            onkeydown="if(event.key==='Enter')doLogin()">
-        </div>
-        <div id="loginError"
-          style="display:none;background:rgba(255,68,85,.1);color:var(--red);border:1px solid rgba(255,68,85,.2);border-radius:8px;padding:8px 12px;font-size:.85rem;font-weight:600;margin-top:8px">
-        </div>
-        <div class="flex-row" style="margin-top:14px">
-          <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Đăng Nhập</button>
-          <button class="btn btn-ghost"
-            onclick="document.getElementById('loginModal').classList.remove('open')">Hủy</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script type="module" src="app.js"></script>
 
-  <div
-    style="text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);padding-bottom:20px">
-    <span id="savingBadge" class="saving-badge" style="display:none">💾 Đang lưu...</span>
+  <div style="text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);padding-bottom:20px">
     <div style="font-size:.72rem;color:var(--text-dim);letter-spacing:1px;line-height:2;margin-bottom:10px">
       <span style="color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem">© Huy Lơ</span>
       &nbsp;·&nbsp; Liên hệ thêm data cho server của bạn:
@@ -102,8 +69,8 @@
       &nbsp;·&nbsp; ID Game: <span style="color:var(--gold-light)">10404978</span>
       &nbsp;·&nbsp; Player Name: <span style="color:var(--gold-light)">Tabi Crawl Data</span>
       &nbsp;·&nbsp; Server: <span style="color:var(--gold-light)">174</span>
+      &nbsp;·&nbsp; <a href="admin.html" style="color:var(--text-dim);text-decoration:none;font-size:.7rem">Admin</a>
     </div>
-    <div id="adminArea"></div>
   </div>
 </body>
 
