@@ -52,6 +52,16 @@ const LANG = {
     admin_logout: 'Đăng Xuất', admin_login_btn: '🔒 Admin',
     login_submitting: 'Đang đăng nhập...', login_submit: 'Đăng Nhập', login_empty: 'Vui lòng nhập đầy đủ!',
     err_save: 'Lỗi lưu: ', err_delete: 'Lỗi xóa: ',
+    excel_merit_before: 'CT Trước', excel_merit_after: 'CT Sau', excel_merit_rate_calc: 'Tỉ Lệ CT (%)',
+    excel_title: 'Xuất Danh Sách Excel', excel_pwd_subtitle: 'Nhập mật khẩu để tiếp tục',
+    excel_col_subtitle: 'Chọn cột và tùy chọn xuất', excel_pwd_label: 'Mật Khẩu',
+    excel_pwd_input: 'Nhập mật khẩu...', excel_pwd_confirm: 'Xác Nhận',
+    excel_pwd_err: '❌ Mật khẩu không đúng!', excel_col_title: '📋 Chọn Cột Xuất',
+    excel_sort_label: '📊 Sắp xếp theo', excel_dir_label: '↕ Thứ tự',
+    excel_data_label: 'Dữ liệu xuất (chênh lệch):', excel_cancel: 'Hủy', excel_export_btn: '⬇️ Xuất File Excel',
+    excel_no_col: 'Vui lòng chọn ít nhất 1 cột!', excel_no_data: 'Vui lòng chọn 2 ngày để so sánh trước!',
+    excel_btn: '📊 Xuất Excel', excel_info_title: 'Alliance Tracker — Chênh Lệch 2 Ngày',
+    excel_info_server: 'Server:', excel_info_before: 'Ngày trước:', excel_info_after: 'Ngày sau:', excel_info_export: 'Xuất lúc:',
   },
   en: {
     tab_view: '📊 View Data', tab_compare: '🔄 Compare', tab_import: '📥 Import Data', tab_manage: '⚙️ Manage',
@@ -105,6 +115,16 @@ const LANG = {
     admin_logout: 'Logout', admin_login_btn: '🔒 Admin',
     login_submitting: 'Logging in...', login_submit: 'Login', login_empty: 'Please fill in all fields!',
     err_save: 'Save error: ', err_delete: 'Delete error: ',
+    excel_merit_before: 'Merit Before', excel_merit_after: 'Merit After', excel_merit_rate_calc: 'Merit Rate (%)',
+    excel_title: 'Export Excel', excel_pwd_subtitle: 'Enter password to continue',
+    excel_col_subtitle: 'Choose columns to export', excel_pwd_label: 'Password',
+    excel_pwd_input: 'Enter password...', excel_pwd_confirm: 'Confirm',
+    excel_pwd_err: '❌ Wrong password!', excel_col_title: '📋 Select Columns',
+    excel_sort_label: '📊 Sort by', excel_dir_label: '↕ Order',
+    excel_data_label: 'Export data (difference):', excel_cancel: 'Cancel', excel_export_btn: '⬇️ Export Excel',
+    excel_no_col: 'Please select at least 1 column!', excel_no_data: 'Please select 2 dates to compare first!',
+    excel_btn: '📊 Export Excel', excel_info_title: 'Alliance Tracker — Difference Between 2 Dates',
+    excel_info_server: 'Server:', excel_info_before: 'Date before:', excel_info_after: 'Date after:', excel_info_export: 'Exported at:',
   }
 };
 

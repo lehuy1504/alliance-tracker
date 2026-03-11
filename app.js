@@ -18,7 +18,8 @@
     // Column config (localized getter functions)
     // ══════════════════════════════════════════════
     const getCmpFixed = () => [
-      { k: 'dm', l: T('col_merit') }, { k: 'dk', l: T('col_kill') }, { k: 'dh', l: T('col_heal') },
+      { k: 'dm', l: T('col_merit') }, { k: 'merit_rate_calc', l: T('excel_merit_rate_calc'), pct: true },
+      { k: 'dk', l: T('col_kill') }, { k: 'dh', l: T('col_heal') },
       { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dn', l: T('col_mana_spend') },
     ];
     const getCmpExtra = () => [
@@ -29,7 +30,7 @@
       { k: 'before', l: T('top10_before') }, { k: 'after', l: T('top10_after') }, { k: 'diff', l: T('top10_diff') },
     ];
     const getDiffSortOpts = () => [
-      { v: 'dm', l: T('col_merit') }, { v: 'dp', l: T('col_power') }, { v: 'dk', l: T('col_kill') },
+      { v: 'dm', l: T('col_merit') }, { v: 'merit_rate_calc', l: T('excel_merit_rate_calc') }, { v: 'dp', l: T('col_power') }, { v: 'dk', l: T('col_kill') },
       { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') }, { v: 'dn', l: T('col_mana_spend') },
       { v: 'dgs', l: T('col_gold_spend') }, { v: 'dws', l: T('col_wood_spend') }, { v: 'dss', l: T('col_stone_spend') },
       { v: 'dges', l: T('col_gem_spend') }, { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
@@ -42,7 +43,10 @@
       { v: 'dmg', l: T('top10_mana_gather'), field: 'manaGather' },
     ];
     const getDiffSections = () => [
-      { t: T('section_battle'), fields: [[T('field_merit'), 'merit'], [T('field_merit_rate'), 'meritRate', true], [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
+      { t: T('section_battle'), fields: [
+        [T('field_merit'), 'merit'], [T('field_merit_rate'), 'meritRate', true],
+        [T('excel_merit_rate_calc'), null, false, (a, b) => { const pm = b.powerMax || a.powerMax; if (!pm) return { va: 0, vb: 0, diff: 0 }; const va = Math.round((a.merit || 0) / pm * 10000) / 100; const vb = Math.round((b.merit || 0) / pm * 10000) / 100; return { va, vb, diff: +((vb - va).toFixed(2)) }; }],
+        [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
       { t: T('section_spend'), fields: [[T('field_gold'), 'goldSpend'], [T('field_wood'), 'woodSpend'], [T('field_stone'), 'stoneSpend'], [T('field_mana'), 'manaSpend'], [T('field_gem'), 'gemSpend']] },
       { t: T('section_gather'), fields: [[T('field_gold'), 'goldGather'], [T('field_wood'), 'woodGather'], [T('field_stone'), 'stoneGather'], [T('field_mana'), 'manaGather'], [T('field_gem'), 'gemGather']] },
     ];
@@ -143,7 +147,7 @@
             <td class="id-click" onclick="showDiffDetail('${d.id}')" title="${T('view_detail')}">${d.id}</td>
             <td class="left name" onclick="showDiffDetail('${d.id}',true)">${hl(d.name, q)}</td>
             <td class="left ally">[${hl(d.alliance, q)}]</td>
-            ${allCols.map(c => `<td class="${dcls(d[c.k])}">${arrow(d[c.k], cmpNumFmt)}</td>`).join('')}
+            ${allCols.map(c => `<td class="${dcls(d[c.k])}">${c.pct ? (d[c.k] >= 0 ? '+' : '') + (+d[c.k] || 0).toFixed(2) + '%' : arrow(d[c.k], cmpNumFmt)}</td>`).join('')}
           </tr>`;
         }).join('');
       return `<table><thead><tr>
@@ -151,7 +155,7 @@
         <th class="nosort" style="width:54px">ID 🔍</th>
         <th class="left" style="min-width:140px">${T('col_name')}</th>
         <th class="left" style="width:76px">${T('col_alliance')}</th>
-        ${allCols.map(c => `<th class="${cmpSortKey === c.k ? 'sorted' : ''}" onclick="setCmpSort('${c.k}')" style="min-width:110px">+/- ${c.l} ${cmpSortKey === c.k ? (cmpSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
+        ${allCols.map(c => `<th class="${cmpSortKey === c.k ? 'sorted' : ''}" onclick="setCmpSort('${c.k}')" style="min-width:110px">${c.pct ? '' : '+/- '}${c.l} ${cmpSortKey === c.k ? (cmpSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
       </tr></thead>
       <tbody id="cmpTbody">${rows}</tbody>
     </table>`;
@@ -276,6 +280,8 @@
         const a = m1[id] || {}, b = m2[id] || {}, g = (o, k) => o[k] || 0;
         return {
           id, name: b.name || a.name || id, alliance: b.alliance || a.alliance || '', a, b,
+          merit_before: g(a, 'merit'), merit_after: g(b, 'merit'),
+          merit_rate_calc: b.powerMax ? Math.round((g(b, 'merit') - g(a, 'merit')) / b.powerMax * 10000) / 100 : 0,
           dm: g(b, 'merit') - g(a, 'merit'), dp: g(b, 'power') - g(a, 'power'), dk: g(b, 'kill') - g(a, 'kill'),
           dd: g(b, 'dead') - g(a, 'dead'), dh: g(b, 'heal') - g(a, 'heal'), dn: g(b, 'manaSpend') - g(a, 'manaSpend'),
           dgs: g(b, 'goldSpend') - g(a, 'goldSpend'), dws: g(b, 'woodSpend') - g(a, 'woodSpend'),
@@ -351,7 +357,7 @@
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
             <span class="count-badge ${isOn ? 'on' : ''}" id="cmpBadge">${badge}</span>
-            <button class="btn btn-ghost" style="padding:4px 11px;font-size:.78rem;border-color:rgba(240,180,41,.45);color:var(--gold-light);white-space:nowrap" onclick="showExportModal()">📊 Xuất Excel</button>
+            <button class="btn btn-ghost" style="padding:4px 11px;font-size:.78rem;border-color:rgba(240,180,41,.45);color:var(--gold-light);white-space:nowrap" onclick="showExportModal()">${T('excel_btn')}</button>
           </div>
           <div class="flex-row">
             <div class="search-wrap">
@@ -460,10 +466,13 @@
       document.getElementById('diffModalSub').textContent = `[${d.alliance}] · ID: ${d.id} · ${fmtDate(cmpD1)} → ${fmtDate(cmpD2)}`;
       const allRows = getDiffSections().map(sec => {
         const hdr = `<tr><td colspan="4" style="padding:10px 10px 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-dim);border-bottom:1px solid var(--border);border-top:1px solid var(--border)">${sec.t}</td></tr>`;
-        const drows = sec.fields.map(([label, field, isPct]) => {
-          const va = d.a[field] || 0, vb = d.b[field] || 0, diff = vb - va;
-          const fA = isPct ? va + '%' : fmtFull(va), fB = isPct ? vb + '%' : fmtFull(vb);
-          const fD = isPct ? (diff >= 0 ? '+' : '') + diff.toFixed(2) + '%' : (diff >= 0 ? '▲ ' : '▼ ') + fmtFull(Math.abs(diff));
+        const drows = sec.fields.map(([label, field, isPct, computeFn]) => {
+          let va, vb, diff;
+          if (computeFn) { ({ va, vb, diff } = computeFn(d.a, d.b)); }
+          else { va = d.a[field] || 0; vb = d.b[field] || 0; diff = vb - va; }
+          const fA = computeFn ? va.toFixed(2) + '%' : isPct ? va + '%' : fmtFull(va);
+          const fB = computeFn ? vb.toFixed(2) + '%' : isPct ? vb + '%' : fmtFull(vb);
+          const fD = (computeFn || isPct) ? (diff >= 0 ? '+' : '') + diff.toFixed(2) + '%' : (diff >= 0 ? '▲ ' : '▼ ') + fmtFull(Math.abs(diff));
           return `<tr style="border-bottom:1px solid rgba(42,48,80,.2)">
           <td style="padding:6px 10px;color:var(--text-dim);font-size:.85rem;white-space:nowrap">${label}</td>
           <td style="padding:6px 12px;text-align:right;color:var(--text-dim);font-variant-numeric:tabular-nums;white-space:nowrap">${fA}</td>
@@ -523,6 +532,9 @@
       { k: 'id',    label: 'ID',                                  field: 'id',    w: 10, num: false, def: true },
       { k: 'name',  label: T('col_name'),                         field: 'name',  w: 22, num: false, def: true },
       { k: 'alliance', label: T('col_alliance'),                  field: 'alliance', w: 12, num: false, def: false },
+      { k: 'merit_before', label: T('excel_merit_before'),        field: 'merit_before', w: 18, num: true, def: true },
+      { k: 'merit_after',  label: T('excel_merit_after'),         field: 'merit_after',  w: 18, num: true, def: true },
+      { k: 'merit_rate_calc', label: T('excel_merit_rate_calc'),  field: 'merit_rate_calc', w: 15, num: true, pct: true, def: true },
       { k: 'dm',    label: '+/- ' + T('col_merit'),               field: 'dm',    w: 18, num: true, def: true, sortDef: true },
       { k: 'dp',    label: '+/- ' + T('col_power'),               field: 'dp',    w: 18, num: true, def: true },
       { k: 'dk',    label: '+/- ' + T('col_kill'),                field: 'dk',    w: 18, num: true, def: true },
@@ -550,22 +562,22 @@
         <div class="modal" style="max-width:600px">
           <div class="modal-header">
             <div>
-              <div style="font-size:1.05rem;color:var(--gold)">📊 Xuất Danh Sách Excel</div>
-              <div style="font-size:.8rem;color:var(--text-dim);margin-top:3px" id="exportSubtitle">Nhập mật khẩu để tiếp tục</div>
+              <div style="font-size:1.05rem;color:var(--gold)">${T('excel_title')}</div>
+              <div style="font-size:.8rem;color:var(--text-dim);margin-top:3px" id="exportSubtitle">${T('excel_pwd_subtitle')}</div>
             </div>
             <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem;flex-shrink:0" onclick="closeExport()">✕</button>
           </div>
           <div class="modal-body">
             <div id="exportStep1">
-              <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Mật Khẩu</div>
+              <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${T('excel_pwd_label')}</div>
               <div style="display:flex;gap:8px">
                 <div style="position:relative;flex:1">
-                  <input type="password" id="exportPwdInput" placeholder="Nhập mật khẩu..." style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyExportPwd()">
+                  <input type="password" id="exportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyExportPwd()">
                   <button onclick="const i=document.getElementById('exportPwdInput');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px">👁</button>
                 </div>
-                <button class="btn btn-primary" onclick="verifyExportPwd()">Xác Nhận</button>
+                <button class="btn btn-primary" onclick="verifyExportPwd()">${T('excel_pwd_confirm')}</button>
               </div>
-              <div id="exportPwdErr" style="color:var(--red);font-size:.85rem;margin-top:8px;display:none">❌ Mật khẩu không đúng!</div>
+              <div id="exportPwdErr" style="color:var(--red);font-size:.85rem;margin-top:8px;display:none">${T('excel_pwd_err')}</div>
             </div>
             <div id="exportStep2" style="display:none"></div>
           </div>
@@ -590,7 +602,7 @@
       }
       errEl.style.display = 'none';
       document.getElementById('exportStep1').style.display = 'none';
-      document.getElementById('exportSubtitle').textContent = 'Chọn cột và tùy chọn xuất';
+      document.getElementById('exportSubtitle').textContent = T('excel_col_subtitle');
       const step2 = document.getElementById('exportStep2');
       step2.style.display = 'block';
       _renderExportCols(step2);
@@ -603,7 +615,7 @@
       const dt = cmpD1 && cmpD2 ? `${fmtDate(cmpD1)} → ${fmtDate(cmpD2)}` : '—';
       container.innerHTML = `
         <div style="margin-bottom:14px">
-          <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📋 Chọn Cột Xuất</div>
+          <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">${T('excel_col_title')}</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">
             ${cols.map(c => `<label style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--bg3);border:1px solid ${c.def ? 'var(--border-gold)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-size:.86rem" id="elbl_${c.k}">
               <input type="checkbox" id="ecol_${c.k}" ${c.def ? 'checked' : ''} style="accent-color:var(--gold);width:14px;height:14px;flex-shrink:0" onchange="document.getElementById('elbl_${c.k}').style.borderColor=this.checked?'var(--border-gold)':'var(--border)'">
@@ -613,33 +625,33 @@
         </div>
         <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px">
           <div>
-            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">📊 Sắp xếp theo</div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${T('excel_sort_label')}</div>
             <select id="exportSortCol" style="width:auto">${sortCols.map(c => `<option value="${c.field}" ${c.sortDef ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
           </div>
           <div>
-            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">↕ Thứ tự</div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${T('excel_dir_label')}</div>
             <select id="exportSortDir" style="width:auto">
-              <option value="desc" selected>↓ Cao → Thấp</option>
-              <option value="asc">↑ Thấp → Cao</option>
+              <option value="desc" selected>${T('dir_desc')}</option>
+              <option value="asc">${T('dir_asc')}</option>
             </select>
           </div>
           <div style="flex:1;min-width:120px;text-align:right">
-            <div style="font-size:.75rem;color:var(--text-dim)">Dữ liệu xuất (chênh lệch):</div>
+            <div style="font-size:.75rem;color:var(--text-dim)">${T('excel_data_label')}</div>
             <div style="font-size:.85rem;color:var(--gold);font-weight:600">Server ${srv} · ${dt}</div>
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn btn-ghost" onclick="closeExport()">Hủy</button>
-          <button class="btn btn-primary" onclick="runExport()">⬇️ Xuất File Excel</button>
+          <button class="btn btn-ghost" onclick="closeExport()">${T('excel_cancel')}</button>
+          <button class="btn btn-primary" onclick="runExport()">${T('excel_export_btn')}</button>
         </div>`;
     }
 
     window.runExport = () => {
       const selectedCols = EXPORT_COLS_DEF().filter(c => document.getElementById('ecol_' + c.k)?.checked);
-      if (!selectedCols.length) { alert('Vui lòng chọn ít nhất 1 cột!'); return; }
+      if (!selectedCols.length) { alert(T('excel_no_col')); return; }
       const sortField = document.getElementById('exportSortCol')?.value || 'dm';
       const sortDir = document.getElementById('exportSortDir')?.value || 'desc';
-      if (!_cmpDiffs.length) { alert('Vui lòng chọn 2 ngày để so sánh trước!'); return; }
+      if (!_cmpDiffs.length) { alert(T('excel_no_data')); return; }
       const sorted = [..._cmpDiffs].sort((a, b) => {
         const va = +a[sortField] || 0, vb = +b[sortField] || 0;
         return sortDir === 'desc' ? vb - va : va - vb;
@@ -678,7 +690,7 @@
 
       const cellBorder = { top: { style: 'thin', color: { rgb: 'D9E1F2' } }, bottom: { style: 'thin', color: { rgb: 'D9E1F2' } }, left: { style: 'thin', color: { rgb: 'D9E1F2' } }, right: { style: 'thin', color: { rgb: 'D9E1F2' } } };
 
-      function dataCellStyle(isNum, value, rowIdx) {
+      function dataCellStyle(isNum, value, rowIdx, col = null) {
         const fill = { fgColor: rowIdx < 3 ? rowFills[rowIdx] : (rowIdx % 2 === 0 ? evenFill : oddFill) };
         const bold = rowIdx < 3;
         const color = isNum && typeof value === 'number'
@@ -689,7 +701,7 @@
           fill,
           alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
           border: cellBorder,
-          numFmt: isNum ? '#,##0' : '@'
+          numFmt: isNum ? (col?.pct ? '0.00' : '#,##0') : '@'
         };
       }
 
@@ -714,7 +726,7 @@
             v = v != null ? String(v) : '';
           }
           vals.push(v);
-          rowStyles.push(dataCellStyle(c.num, c.num ? v : 0, i));
+          rowStyles.push(dataCellStyle(c.num, c.num ? v : 0, i, c));
         });
         aoa.push(vals);
         styles.push(rowStyles);
@@ -753,11 +765,11 @@
 
       // Title info sheet
       const infoWs = XLSXlib.utils.aoa_to_sheet([
-        ['Alliance Tracker — Chênh Lệch 2 Ngày'],
-        [`Server: ${srv}`],
-        [`Ngày trước: ${fmtDate(d1str)}`],
-        [`Ngày sau: ${fmtDate(d2str)}`],
-        [`Xuất lúc: ${new Date().toLocaleString('vi-VN')}`],
+        [T('excel_info_title')],
+        [`${T('excel_info_server')} ${srv}`],
+        [`${T('excel_info_before')} ${fmtDate(d1str)}`],
+        [`${T('excel_info_after')} ${fmtDate(d2str)}`],
+        [`${T('excel_info_export')} ${new Date().toLocaleString(getLang() === 'vi' ? 'vi-VN' : 'en-US')}`],
       ]);
       XLSXlib.utils.book_append_sheet(wb, infoWs, 'Info');
 
