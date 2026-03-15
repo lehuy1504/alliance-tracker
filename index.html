@@ -15,9 +15,10 @@
 
 <body>
   <div class="app">
-    <header>
+    <header style="position:relative">
       <div class="logo">⚔ ALLIANCE TRACKER</div>
       <div class="subtitle">Game Server Intelligence Dashboard - From Tabi 174 with love! ❤️</div>
+      <button id="langToggleBtn" onclick="toggleLang()" style="position:absolute;top:16px;right:0;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text-dim);font-size:.78rem;padding:4px 10px;cursor:pointer;letter-spacing:1px">🌐 EN</button>
     </header>
     <div class="tabs" id="tabBar"></div>
     <div id="loadingScreen" class="panel" style="text-align:center;padding:50px">
@@ -65,7 +66,7 @@
   <div style="text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid var(--border);padding-bottom:20px">
     <div style="font-size:.72rem;color:var(--text-dim);letter-spacing:1px;line-height:2;margin-bottom:10px">
       <span style="color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem">© Huy Lơ</span>
-      &nbsp;·&nbsp; Liên hệ thêm data cho server của bạn:
+      &nbsp;·&nbsp; <span id="footerContact">Liên hệ thêm data cho server của bạn:</span>
       &nbsp;·&nbsp; Telegram <a href="https://t.me/lengochuy1504" target="_blank"
         style="color:var(--blue);text-decoration:none">@lengochuy1504</a>
       &nbsp;·&nbsp; ID Game: <span style="color:var(--gold-light)">10404978</span>

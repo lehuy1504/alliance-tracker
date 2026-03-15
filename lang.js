@@ -76,6 +76,7 @@ const LANG = {
     alliance_mode_total: '📊 Toàn bộ',
     alliance_mode_growth: '📈 Tăng trưởng',
     alliance_pick_from: 'Chọn "Từ ngày" để xem tăng trưởng',
+    footer_contact: 'Liên hệ thêm data cho server của bạn:',
   },
   en: {
     tab_view: '📊 View Data', tab_compare: '🔄 Compare', tab_import: '📥 Import Data', tab_manage: '⚙️ Manage',
@@ -153,6 +154,7 @@ const LANG = {
     alliance_mode_total: '📊 All data',
     alliance_mode_growth: '📈 Growth',
     alliance_pick_from: 'Select "From date" to view growth',
+    footer_contact: 'Contact for data on your server:',
   }
 };
 

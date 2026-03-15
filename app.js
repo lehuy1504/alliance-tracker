@@ -1,5 +1,5 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
     import { T, getLang, setLang } from './lang.js';
 
     const firebaseConfig = { apiKey: "AIzaSyCp6L4C-4KhZNm67VpC3hu7ws_n2C5XTfA", authDomain: "alliance-tracker-ddc87.firebaseapp.com", databaseURL: "https://alliance-tracker-ddc87-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "alliance-tracker-ddc87", storageBucket: "alliance-tracker-ddc87.firebasestorage.app", messagingSenderId: "910735026600", appId: "1:910735026600:web:d2199d026f1e476cb4d59d" };
@@ -7,6 +7,13 @@
 
     // Update loading text to match saved language
     { const el = document.getElementById('loadingText'); if (el) el.textContent = T('loading'); }
+
+    // ── localStorage cache (5 min TTL) ──
+    const _CACHE_KEY = 'at_cache_v1';
+    const _CACHE_TTL = 5 * 60 * 1000;
+    function _saveCache(data) { try { localStorage.setItem(_CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch (_) {} }
+    function _loadCache() { try { const p = JSON.parse(localStorage.getItem(_CACHE_KEY) || 'null'); return p && (Date.now() - p.ts < _CACHE_TTL) ? p.data : null; } catch (_) { return null; } }
+    function _debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
     let DATA = {}, curServer = null, curDate = null;
     let activeTab = 'view', sortCol = 'merit', sortDir = 'desc', numFmt = 'short', searchQuery = '';
@@ -180,12 +187,40 @@
     // ══════════════════════════════════════════════
     // Firebase
     // ══════════════════════════════════════════════
-    onValue(ref(fbDB, 'servers'), snap => {
-      DATA = snap.val() || {};
-      document.getElementById('loadingScreen').style.display = 'none';
-      renderAll();
-      showTab(activeTab);
-    });
+    let _lastDataStr = '';
+    async function loadData(fromCache = true) {
+      if (fromCache) {
+        const cached = _loadCache();
+        if (cached) {
+          DATA = cached; _lastDataStr = JSON.stringify(cached);
+          document.getElementById('loadingScreen').style.display = 'none';
+          renderAll(); showTab(activeTab);
+        }
+      }
+      try {
+        const snap = await get(ref(fbDB, 'servers'));
+        const fresh = snap.val() || {};
+        const freshStr = JSON.stringify(fresh);
+        _saveCache(fresh);
+        if (freshStr !== _lastDataStr) {
+          DATA = fresh; _lastDataStr = freshStr;
+          document.getElementById('loadingScreen').style.display = 'none';
+          renderAll(); showTab(activeTab);
+        } else {
+          document.getElementById('loadingScreen').style.display = 'none';
+        }
+        _updateRefreshBtn(false);
+      } catch (e) {
+        console.error('Firebase load error:', e);
+        if (!_lastDataStr) { const el = document.getElementById('loadingText'); if (el) el.textContent = 'Lỗi tải dữ liệu. Vui lòng thử lại.'; }
+        _updateRefreshBtn(false);
+      }
+    }
+    function _updateRefreshBtn(loading) {
+      const btn = document.getElementById('refreshBtn');
+      if (btn) { btn.textContent = loading ? '⏳' : '🔄'; btn.disabled = loading; }
+    }
+    window.refreshData = () => { _updateRefreshBtn(true); loadData(false); };
 
     const fmtNum = n => { if (!n || isNaN(n)) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return Number(n).toLocaleString(); };
     const fmtFull = n => { if (!n || isNaN(n)) return '0'; return Number(n).toLocaleString('de-DE'); };
@@ -200,7 +235,7 @@
       const tabs = [['view', T('tab_view')], ['alliance', T('tab_alliance')], ['compare', T('tab_compare')]];
       document.getElementById('tabBar').innerHTML =
         tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join('') +
-        `<button class="tab-btn" style="margin-left:auto;opacity:.85;font-size:.8rem" onclick="toggleLang()">${T('lang_toggle')}</button>`;
+        `<button id="refreshBtn" class="tab-btn" style="margin-left:auto;opacity:.75;font-size:.85rem" title="Tải lại dữ liệu" onclick="refreshData()">🔄</button>`;
     }
     function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); if (name === 'alliance') renderAlliance(); }
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
@@ -318,15 +353,16 @@
     function renderCompare() {
       const servers = Object.keys(DATA).sort((a, b) => +a - +b);
       if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">${T('no_data_cmp')}</div>`; return; }
-      cmpSrv = curServer || servers[0];
+      if (!cmpSrv || !DATA[cmpSrv]) cmpSrv = curServer || servers[0];
       const dates = DATA[cmpSrv] ? Object.keys(DATA[cmpSrv]).sort() : [];
       if (!cmpD1 || !DATA[cmpSrv]?.[cmpD1]) cmpD1 = dates.length >= 2 ? dates[dates.length - 2] : dates[0] || '';
       if (!cmpD2 || !DATA[cmpSrv]?.[cmpD2]) cmpD2 = dates.length >= 1 ? dates[dates.length - 1] : '';
       const mkOpts = srv => (DATA[srv] ? Object.keys(DATA[srv]).sort() : []).map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
       document.getElementById('tab-compare').innerHTML = `
       <div class="panel">
-        <div class="panel-title">${T('cmp_title')} — <span style="color:var(--gold)">${T('server_prefix')} ${cmpSrv}</span></div>
+        <div class="panel-title">${T('cmp_title')}</div>
         <div class="flex-row" style="margin-bottom:16px;gap:12px">
+          <div><div class="section-label">Server</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>${T('server_prefix')} ${s}</option>`).join('')}</select></div>
           <div><div class="section-label">${T('cmp_date_before')}</div><select id="cmpD1Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
           <div><div class="section-label">${T('cmp_date_after')}</div><select id="cmpD2Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
         </div>
@@ -1108,4 +1144,16 @@
     window.toggleLang = () => {
       setLang(getLang() === 'vi' ? 'en' : 'vi');
       renderAll();
+      _updateFooter();
     };
+
+    function _updateFooter() {
+      const el = document.getElementById('footerContact');
+      if (el) el.textContent = T('footer_contact');
+      const btn = document.getElementById('langToggleBtn');
+      if (btn) btn.textContent = T('lang_toggle');
+    }
+
+    // ── Start: load data after all functions defined ──
+    _updateFooter();
+    loadData();
