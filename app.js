@@ -13,6 +13,11 @@
     let cmpSrv = null, cmpD1 = null, cmpD2 = null;
     let cmpNumFmt = 'short', cmpSortKey = 'dm', cmpSortDir = 'desc', cmpSearchQ = '', cmpTop10Key = 'dm', top10Dir = 'desc';
     let _cmpDiffs = [];
+    let allianceSrv = null, allianceSortCol = 'power', allianceSortDir = 'desc', allianceNumFmt = 'short', allianceSearch = '';
+    let allianceExtraVis = new Set();
+    let allianceViewMode = 'members'; // 'members' | 'servers'
+    let allianceDataMode = 'total'; // 'total' | 'growth'
+    let allianceFromDate = null, allianceToDate = null;
 
     // ══════════════════════════════════════════════
     // Column config (localized getter functions)
@@ -49,6 +54,17 @@
         [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
       { t: T('section_spend'), fields: [[T('field_gold'), 'goldSpend'], [T('field_wood'), 'woodSpend'], [T('field_stone'), 'stoneSpend'], [T('field_mana'), 'manaSpend'], [T('field_gem'), 'gemSpend']] },
       { t: T('section_gather'), fields: [[T('field_gold'), 'goldGather'], [T('field_wood'), 'woodGather'], [T('field_stone'), 'stoneGather'], [T('field_mana'), 'manaGather'], [T('field_gem'), 'gemGather']] },
+    ];
+
+    const getAllianceFixed = () => [
+      { k: 'power', l: T('col_power') }, { k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') },
+      { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') },
+    ];
+    const getAllianceExtra = () => [
+      { k: 'goldSpend', l: T('col_gold_spend') }, { k: 'woodSpend', l: T('col_wood_spend') },
+      { k: 'stoneSpend', l: T('col_stone_spend') }, { k: 'gemSpend', l: T('col_gem_spend') },
+      { k: 'goldGather', l: T('col_gold_gather') }, { k: 'woodGather', l: T('col_wood_gather') },
+      { k: 'stoneGather', l: T('col_stone_gather') }, { k: 'manaGather', l: T('col_mana_gather') }, { k: 'gemGather', l: T('col_gem_gather') },
     ];
 
     let cmpExtraVis = new Set(); // extra cols currently visible
@@ -181,12 +197,12 @@
 
     function renderAll() { renderTabBar(); renderTab(activeTab); }
     function renderTabBar() {
-      const tabs = [['view', T('tab_view')], ['compare', T('tab_compare')]];
+      const tabs = [['view', T('tab_view')], ['alliance', T('tab_alliance')], ['compare', T('tab_compare')]];
       document.getElementById('tabBar').innerHTML =
         tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join('') +
         `<button class="tab-btn" style="margin-left:auto;opacity:.85;font-size:.8rem" onclick="toggleLang()">${T('lang_toggle')}</button>`;
     }
-    function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); }
+    function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); if (name === 'alliance') renderAlliance(); }
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
 
 
@@ -254,10 +270,15 @@
       const tbody = document.getElementById('rankTbody'); if (tbody) tbody.innerHTML = buildRows(filtered, q);
     };
 
-    window.showPlayerDetail = (id, fromCmp) => {
+    window.showPlayerDetail = (id, fromCmp, srvHint) => {
       let r = null;
-      if (!fromCmp && curServer && curDate) { r = (DATA[curServer]?.[curDate] || []).find(x => x.id == id); }
+      if (srvHint && DATA[srvHint]) {
+        const dates = Object.keys(DATA[srvHint]).sort();
+        r = (DATA[srvHint]?.[dates[dates.length - 1]] || []).find(x => x.id == id);
+      }
+      if (!r && !fromCmp && curServer && curDate) { r = (DATA[curServer]?.[curDate] || []).find(x => x.id == id); }
       if (!r && cmpSrv) { r = (DATA[cmpSrv]?.[cmpD2] || []).find(x => x.id == id); if (!r) r = (DATA[cmpSrv]?.[cmpD1] || []).find(x => x.id == id); }
+      if (!r) { for (const s of Object.keys(DATA)) { const dd = Object.keys(DATA[s]).sort(); r = (DATA[s]?.[dd[dd.length - 1]] || []).find(x => x.id == id); if (r) break; } }
       if (!r) return;
       document.getElementById('pModalName').textContent = r.name;
       document.getElementById('pModalSub').textContent = `[${r.alliance}] · ID: ${r.id}`;
@@ -297,16 +318,15 @@
     function renderCompare() {
       const servers = Object.keys(DATA).sort((a, b) => +a - +b);
       if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">${T('no_data_cmp')}</div>`; return; }
-      if (!cmpSrv || !DATA[cmpSrv]) cmpSrv = curServer || servers[0];
+      cmpSrv = curServer || servers[0];
       const dates = DATA[cmpSrv] ? Object.keys(DATA[cmpSrv]).sort() : [];
       if (!cmpD1 || !DATA[cmpSrv]?.[cmpD1]) cmpD1 = dates.length >= 2 ? dates[dates.length - 2] : dates[0] || '';
       if (!cmpD2 || !DATA[cmpSrv]?.[cmpD2]) cmpD2 = dates.length >= 1 ? dates[dates.length - 1] : '';
       const mkOpts = srv => (DATA[srv] ? Object.keys(DATA[srv]).sort() : []).map(d => `<option value="${d}">${fmtDate(d)}</option>`).join('');
       document.getElementById('tab-compare').innerHTML = `
       <div class="panel">
-        <div class="panel-title">${T('cmp_title')}</div>
+        <div class="panel-title">${T('cmp_title')} — <span style="color:var(--gold)">${T('server_prefix')} ${cmpSrv}</span></div>
         <div class="flex-row" style="margin-bottom:16px;gap:12px">
-          <div><div class="section-label">Server</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>${T('server_prefix')} ${s}</option>`).join('')}</select></div>
           <div><div class="section-label">${T('cmp_date_before')}</div><select id="cmpD1Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
           <div><div class="section-label">${T('cmp_date_after')}</div><select id="cmpD2Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
         </div>
@@ -496,6 +516,314 @@
         ${T('diff_tip')}
       </div>`;
       document.getElementById('diffModal').classList.add('open');
+    };
+
+    // ════════════════════════════════════
+    // TAB: LIÊN MINH / SERVER (tổng hợp)
+    // ════════════════════════════════════
+    function _getAllianceDates() {
+      const dateSet = new Set();
+      Object.keys(DATA).forEach(srv => Object.keys(DATA[srv] || {}).forEach(d => dateSet.add(d)));
+      return [...dateSet].sort();
+    }
+
+    function _getClosestDate(srv, targetDate) {
+      const dates = DATA[srv] ? Object.keys(DATA[srv]).sort() : [];
+      if (!dates.length) return null;
+      if (!targetDate) return dates[dates.length - 1];
+      const candidates = dates.filter(d => d <= targetDate);
+      return candidates.length ? candidates[candidates.length - 1] : null;
+    }
+
+    const _DELTA_KEYS = ['power', 'merit', 'kill', 'dead', 'heal', 'manaSpend', 'goldSpend', 'woodSpend', 'stoneSpend', 'gemSpend', 'goldGather', 'woodGather', 'stoneGather', 'manaGather', 'gemGather'];
+
+    function _getAllianceRows() {
+      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const allRows = [], srvInfo = [];
+      const isRange = allianceDataMode === 'growth' && !!(allianceFromDate && allianceFromDate !== allianceToDate);
+      servers.forEach(srv => {
+        const toDate = allianceDataMode === 'total' ? _getClosestDate(srv, null) : _getClosestDate(srv, allianceToDate);
+        if (!toDate) return;
+        const toRows = DATA[srv][toDate] || [];
+        if (isRange) {
+          const fromDate = _getClosestDate(srv, allianceFromDate);
+          const fromRows = fromDate ? (DATA[srv][fromDate] || []) : [];
+          const fromMap = {};
+          fromRows.forEach(r => { fromMap[r.id] = r; });
+          toRows.forEach(r => {
+            const prev = fromMap[r.id] || {};
+            const delta = {};
+            _DELTA_KEYS.forEach(k => { delta[k] = (r[k] || 0) - (prev[k] || 0); });
+            allRows.push({ ...r, ...delta, _server: srv });
+          });
+          srvInfo.push({ srv, date: toDate, fromDate: fromDate || '?', count: toRows.length });
+        } else {
+          toRows.forEach(r => allRows.push({ ...r, _server: srv }));
+          srvInfo.push({ srv, date: toDate, count: toRows.length });
+        }
+      });
+      return { allRows, srvInfo, servers, isRange };
+    }
+
+    function _sortAllianceRows(allRows) {
+      return [...allRows].sort((a, b) => {
+        if (allianceSortCol === '_server') {
+          const va = +a._server || 0, vb = +b._server || 0;
+          return allianceSortDir === 'desc' ? vb - va : va - vb;
+        }
+        return allianceSortDir === 'desc' ? (b[allianceSortCol] || 0) - (a[allianceSortCol] || 0) : (a[allianceSortCol] || 0) - (b[allianceSortCol] || 0);
+      });
+    }
+
+    function _fmtCell(n, isRange, fmt) {
+      const v = n || 0;
+      if (!isRange) return fmt(Math.abs(v) === v ? v : v);
+      const abs = fmt(Math.abs(v));
+      if (v > 0) return `<span class="pos">▲ ${abs}</span>`;
+      if (v < 0) return `<span class="neg">▼ ${abs}</span>`;
+      return `<span style="opacity:.5">0</span>`;
+    }
+
+    function _buildAllianceRows(filtered, allCols, q, isRange) {
+      const fmt = n => allianceNumFmt === 'short' ? fmtNum(n) : fmtFull(n);
+      if (!filtered.length) return `<tr class="no-results"><td colspan="${5 + allCols.length}">${T('not_found_row')}</td></tr>`;
+      return filtered.map((r, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1, rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+        return `<tr>
+          <td class="rank ${rc}">${medal}</td>
+          <td style="text-align:center;font-weight:600;color:var(--gold-light)">S${r._server}</td>
+          <td>${r.id}</td>
+          <td class="left name" onclick="showPlayerDetail('${r.id}',false,'${r._server}')">${hl(r.name, q)}</td>
+          <td class="left ally">[${hl(r.alliance, q)}]</td>
+          ${allCols.map(c => c.k === 'meritRate' ? `<td class="rate">${r.meritRate || 0}%</td>` : `<td>${_fmtCell(r[c.k], isRange, fmt)}</td>`).join('')}
+        </tr>`;
+      }).join('');
+    }
+
+    function _getServerAggRows(allRows) {
+      const map = {};
+      allRows.forEach(r => {
+        const s = r._server;
+        if (!map[s]) map[s] = { _server: s, power: 0, merit: 0, kill: 0, dead: 0, heal: 0, manaSpend: 0, goldSpend: 0, woodSpend: 0, stoneSpend: 0, gemSpend: 0, goldGather: 0, woodGather: 0, stoneGather: 0, manaGather: 0, gemGather: 0, _playerCount: 0 };
+        const m = map[s];
+        m.power += r.power || 0; m.merit += r.merit || 0; m.kill += r.kill || 0; m.dead += r.dead || 0;
+        m.heal += r.heal || 0; m.manaSpend += r.manaSpend || 0; m.goldSpend += r.goldSpend || 0;
+        m.woodSpend += r.woodSpend || 0; m.stoneSpend += r.stoneSpend || 0; m.gemSpend += r.gemSpend || 0;
+        m.goldGather += r.goldGather || 0; m.woodGather += r.woodGather || 0; m.stoneGather += r.stoneGather || 0;
+        m.manaGather += r.manaGather || 0; m.gemGather += r.gemGather || 0; m._playerCount++;
+      });
+      return Object.values(map);
+    }
+
+    function _sortServerAggRows(rows) {
+      const col = allianceSortCol === 'meritRate' ? 'merit' : allianceSortCol;
+      return [...rows].sort((a, b) => {
+        if (col === '_server') { const va = +a._server || 0, vb = +b._server || 0; return allianceSortDir === 'desc' ? vb - va : va - vb; }
+        return allianceSortDir === 'desc' ? (b[col] || 0) - (a[col] || 0) : (a[col] || 0) - (b[col] || 0);
+      });
+    }
+
+    function _buildServerAggRows(rows, allCols, isRange) {
+      const fmt = n => allianceNumFmt === 'short' ? fmtNum(n) : fmtFull(n);
+      if (!rows.length) return `<tr class="no-results"><td colspan="${3 + allCols.length}">${T('not_found_row')}</td></tr>`;
+      return rows.map((r, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1, rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+        return `<tr>
+          <td class="rank ${rc}">${medal}</td>
+          <td style="text-align:center;font-weight:600;color:var(--gold-light);font-size:1rem">S${r._server}</td>
+          <td style="text-align:center;color:var(--text-dim)">${r._playerCount}</td>
+          ${allCols.map(c => c.k === 'meritRate' ? `<td class="rate">—</td>` : `<td>${_fmtCell(r[c.k], isRange, fmt)}</td>`).join('')}
+        </tr>`;
+      }).join('');
+    }
+
+    function renderAlliance() {
+      const { allRows, srvInfo, servers, isRange } = _getAllianceRows();
+      if (!servers.length) { document.getElementById('tab-alliance').innerHTML = `<div class="panel empty">⚔️<br><br>${T('no_data_admin')}</div>`; return; }
+
+      const FIXED = getAllianceFixed(), EXTRA = getAllianceExtra();
+      const allCols = [...FIXED, ...EXTRA.filter(c => allianceExtraVis.has(c.k))];
+      const allDates = _getAllianceDates();
+      const selStyle = `width:auto;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 10px;font-size:.8rem;cursor:pointer`;
+      const mkDateOpts = (selected, includeEmpty, emptyLabel) =>
+        (includeEmpty ? `<option value="">${emptyLabel}</option>` : '') +
+        allDates.map(d => `<option value="${d}" ${d === selected ? 'selected' : ''}>${fmtDate(d)}</option>`).join('');
+
+      // View mode toggle
+      const viewToggle = `<div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
+        <button class="btn ${allianceViewMode === 'members' ? 'btn-primary' : 'btn-ghost'}" style="padding:4px 14px;font-size:.8rem" onclick="setAllianceViewMode('members')">${T('alliance_view_members')}</button>
+        <button class="btn ${allianceViewMode === 'servers' ? 'btn-primary' : 'btn-ghost'}" style="padding:4px 14px;font-size:.8rem" onclick="setAllianceViewMode('servers')">${T('alliance_view_servers')}</button>
+      </div>`;
+
+      // Data mode toggle + conditional date pickers
+      const dataToggle = `<div style="display:flex;gap:4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px">
+        <button class="btn ${allianceDataMode === 'total' ? 'btn-primary' : 'btn-ghost'}" style="padding:4px 14px;font-size:.8rem" onclick="setAllianceDataMode('total')">${T('alliance_mode_total')}</button>
+        <button class="btn ${allianceDataMode === 'growth' ? 'btn-primary' : 'btn-ghost'}" style="padding:4px 14px;font-size:.8rem" onclick="setAllianceDataMode('growth')">${T('alliance_mode_growth')}</button>
+      </div>`;
+      const datePickers = allianceDataMode === 'growth' ? `
+        <span style="color:var(--text-dim);font-size:.8rem;white-space:nowrap">${T('alliance_from_date')}:</span>
+        <select style="${selStyle}" onchange="setAllianceDateRange('from',this.value)">
+          <option value="">—</option>
+          ${mkDateOpts(allianceFromDate, false, '')}
+        </select>
+        <span style="color:var(--text-dim);font-size:.8rem;white-space:nowrap">${T('alliance_to_date')}:</span>
+        <select style="${selStyle}" onchange="setAllianceDateRange('to',this.value)">
+          ${mkDateOpts(allianceToDate, true, T('alliance_latest_label'))}
+        </select>
+        ${isRange ? `<span style="background:rgba(0,200,100,.12);color:var(--green);border:1px solid rgba(0,200,100,.3);border-radius:6px;padding:3px 10px;font-size:.78rem;font-weight:600">📈 ${T('alliance_growth_mode')}</span>` : `<span style="color:var(--text-dim);font-size:.78rem">${T('alliance_pick_from')}</span>`}
+      ` : '';
+
+      let html = `<div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+          <div class="panel-title" style="margin:0">${T('alliance_title')}</div>
+          ${viewToggle}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          ${dataToggle}
+          ${datePickers}
+        </div>
+        <div class="flex-row" style="margin-bottom:16px;gap:8px;flex-wrap:wrap">
+          ${srvInfo.map(si => `<div style="padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.8rem">
+            <span style="color:var(--gold);font-weight:700">S${si.srv}</span>
+            <span style="color:var(--text-dim);margin:0 5px">·</span>
+            ${isRange ? `<span style="color:var(--text-dim)">${fmtDate(si.fromDate)}</span><span style="color:var(--text-dim);margin:0 4px">→</span>` : ''}
+            <span>📅 ${fmtDate(si.date)}</span>
+            <span style="color:var(--text-dim);margin-left:5px">(${si.count} ${T('players_count')})</span>
+          </div>`).join('')}
+        </div>`;
+
+      if (allRows.length) {
+        const tP = allRows.reduce((s, r) => s + (r.power || 0), 0), tM = allRows.reduce((s, r) => s + (r.merit || 0), 0);
+        const tK = allRows.reduce((s, r) => s + (r.kill || 0), 0), tH = allRows.reduce((s, r) => s + (r.heal || 0), 0);
+        const tN = allRows.reduce((s, r) => s + (r.manaSpend || 0), 0);
+        const al = [...new Set(allRows.map(r => r.alliance))];
+        const fmtStat = n => isRange ? (n >= 0 ? `▲ ${fmtNum(n)}` : `▼ ${fmtNum(Math.abs(n))}`) : fmtNum(n);
+        html += `<div class="stats-row">
+          <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${allRows.length}</div><div class="stat-sub">${servers.length} servers · ${al.length} ${T('stat_alliances')}</div></div>
+          <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtStat(tP)}</div></div>
+          <div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtStat(tM)}</div></div>
+          <div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtStat(tK)}</div></div>
+          <div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtStat(tH)}</div></div>
+          <div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtStat(tN)}</div></div>
+        </div>`;
+      }
+
+      if (allianceViewMode === 'servers') {
+        // ── Server ranking view ──
+        const aggRows = _sortServerAggRows(_getServerAggRows(allRows));
+        const srvSortInd = allianceSortCol === '_server' ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕';
+        html += `<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0">
+          <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="panel-title" style="margin:0">${T('alliance_view_servers')}</div>
+              <span class="count-badge">${aggRows.length} servers</span>
+            </div>
+            <div class="flex-row">
+              <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleAllianceFmt()">${allianceNumFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
+            </div>
+          </div>
+          <div class="table-wrap" id="allianceTableWrap">
+            <table>
+              <thead><tr>
+                <th style="width:38px">#</th>
+                <th class="${allianceSortCol === '_server' ? 'sorted' : ''}" onclick="setAllianceSort('_server')" style="width:70px">Server ${srvSortInd}</th>
+                <th style="width:80px">${T('col_players')}</th>
+                ${allCols.map(c => `<th class="${allianceSortCol === c.k ? 'sorted' : ''}" onclick="setAllianceSort('${c.k}')" style="min-width:110px">${c.l} ${allianceSortCol === c.k ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
+              </tr></thead>
+              <tbody>${_buildServerAggRows(aggRows, allCols, isRange)}</tbody>
+            </table>
+          </div>
+        </div>`;
+      } else {
+        // ── Member ranking view (top 500) ──
+        const sorted = _sortAllianceRows(allRows);
+        const q = allianceSearch.trim();
+        const qL = q.toLowerCase();
+        const fullFiltered = qL ? sorted.filter(r => r.name.toLowerCase().includes(qL) || r.alliance.toLowerCase().includes(qL) || r.id.toString().includes(qL) || r._server.includes(qL)) : sorted;
+        const filtered = fullFiltered.slice(0, 500);
+        const isOn = !!q;
+        const badge = isOn
+          ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${fullFiltered.length} ${T('players_count')}`)
+          : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')} · ${T('alliance_top500')}`;
+        const picker = makePicker('allianceColPick', FIXED, EXTRA, allianceExtraVis, 'onAllianceColToggle');
+        const srvSortInd = allianceSortCol === '_server' ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕';
+        html += `<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0">
+          <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="panel-title" style="margin:0">${T('ranking')}</div>
+              <span class="count-badge ${isOn ? 'on' : ''}" id="allianceBadge">${badge}</span>
+            </div>
+            <div class="flex-row">
+              <div class="search-wrap">
+                <input class="search-input" type="text" id="allianceSearchInput" placeholder="${T('search_placeholder')}" value="${q.replace(/"/g, '&quot;')}" oninput="onAllianceSearch(this.value)" autocomplete="off">
+                <button class="search-clear ${q ? 'show' : ''}" id="allianceSearchClear" onclick="onAllianceSearch('');document.getElementById('allianceSearchInput').value='';document.getElementById('allianceSearchInput').focus()">✕</button>
+              </div>
+              <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleAllianceFmt()">${allianceNumFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
+              ${picker}
+            </div>
+          </div>
+          <div class="table-wrap" id="allianceTableWrap">
+            <table>
+              <thead><tr>
+                <th style="width:38px">#</th>
+                <th class="${allianceSortCol === '_server' ? 'sorted' : ''}" onclick="setAllianceSort('_server')" style="width:70px">Server ${srvSortInd}</th>
+                <th style="width:60px">ID</th>
+                <th class="left" style="min-width:150px">${T('col_name')}</th>
+                <th class="left" style="width:80px">${T('col_alliance')}</th>
+                ${allCols.map(c => `<th class="${allianceSortCol === c.k ? 'sorted' : ''}" onclick="setAllianceSort('${c.k}')" style="min-width:110px">${c.l} ${allianceSortCol === c.k ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
+              </tr></thead>
+              <tbody id="allianceTbody">${_buildAllianceRows(filtered, allCols, q, isRange)}</tbody>
+            </table>
+          </div>
+        </div>`;
+      }
+
+      html += '</div>';
+      document.getElementById('tab-alliance').innerHTML = html;
+      initStickyHScroll('allianceTableWrap');
+      if (allianceViewMode === 'members' && allianceSearch) { const inp = document.getElementById('allianceSearchInput'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+    }
+
+    window.setAllianceDateRange = (which, val) => {
+      if (which === 'from') allianceFromDate = val || null;
+      else allianceToDate = val || null;
+      renderAlliance();
+    };
+    window.setAllianceDataMode = mode => { allianceDataMode = mode; renderAlliance(); };
+    window.setAllianceViewMode = mode => { allianceViewMode = mode; allianceSortCol = 'power'; allianceSortDir = 'desc'; renderAlliance(); };
+    window.toggleAllianceFmt = () => { allianceNumFmt = allianceNumFmt === 'short' ? 'full' : 'short'; renderAlliance(); };
+    window.setAllianceSort = key => {
+      if (key === allianceSortCol) allianceSortDir = allianceSortDir === 'desc' ? 'asc' : 'desc'; else { allianceSortCol = key; allianceSortDir = 'desc'; }
+      renderAlliance();
+    };
+    window.onAllianceSearch = q => {
+      allianceSearch = q;
+      const cb = document.getElementById('allianceSearchClear'); if (cb) cb.classList.toggle('show', !!q);
+      const { allRows, isRange } = _getAllianceRows();
+      const FIXED = getAllianceFixed(), EXTRA = getAllianceExtra();
+      const allCols = [...FIXED, ...EXTRA.filter(c => allianceExtraVis.has(c.k))];
+      const sorted = _sortAllianceRows(allRows);
+      const qL = q.trim().toLowerCase();
+      const fullFiltered = qL ? sorted.filter(r => r.name.toLowerCase().includes(qL) || r.alliance.toLowerCase().includes(qL) || r.id.toString().includes(qL) || r._server.includes(qL)) : sorted;
+      const filtered = fullFiltered.slice(0, 500);
+      const isOn = !!q.trim();
+      const tbody = document.getElementById('allianceTbody');
+      if (tbody) tbody.innerHTML = _buildAllianceRows(filtered, allCols, q, isRange);
+      const badge = document.getElementById('allianceBadge');
+      if (badge) {
+        badge.className = 'count-badge' + (isOn ? ' on' : '');
+        badge.innerHTML = isOn
+          ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${fullFiltered.length} ${T('players_count')}`)
+          : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')} · ${T('alliance_top500')}`;
+      }
+    };
+    window.onAllianceColToggle = (key, checked) => {
+      const extra = getAllianceExtra();
+      if (key === '__all') extra.forEach(c => allianceExtraVis.add(c.k));
+      else if (key === '__none' || key === '__reset') allianceExtraVis = new Set();
+      else checked ? allianceExtraVis.add(key) : allianceExtraVis.delete(key);
+      renderAlliance();
+      getAllianceExtra().forEach(c => { const cb = document.getElementById(`cp_allianceColPick_${c.k}`); if (cb) cb.checked = allianceExtraVis.has(c.k); });
     };
 
     // ── Sticky horizontal scrollbar ──
