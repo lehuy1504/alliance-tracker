@@ -279,6 +279,7 @@
             <div class="search-wrap"><input class="search-input" type="text" id="searchInput" placeholder="${T('search_placeholder')}" value="${q.replace(/"/g, '&quot;')}" oninput="onSearch(this.value)" autocomplete="off"><button class="search-clear ${q ? 'show' : ''}" id="searchClearBtn" onclick="onSearch('');document.getElementById('searchInput').value='';document.getElementById('searchInput').focus()">✕</button></div>
             <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleFmt()">${numFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
             <select onchange="setSortColFn(this.value)" style="width:auto">${cols.map(c => `<option value="${c.k}" ${sortCol === c.k ? 'selected' : ''}>${c.l}</option>`).join('')}</select>
+            <button class="btn btn-ghost" style="padding:4px 11px;font-size:.78rem;border-color:rgba(240,180,41,.45);color:var(--gold-light);white-space:nowrap" onclick="showViewExportModal()">${T('excel_btn')}</button>
           </div>
         </div>
         <div class="table-wrap"><table style="min-width:700px">
@@ -1137,6 +1138,206 @@
       ]);
       XLSXlib.utils.book_append_sheet(wb, infoWs, 'Info');
 
+      XLSXlib.writeFile(wb, `Alliance_S${srv}_${dtFile}.xlsx`);
+    }
+
+    // ══════════════════════════════════════════════
+    // View Tab — Export to Excel (snapshot by date)
+    // ══════════════════════════════════════════════
+    const EXPORT_VIEW_COLS_DEF = () => [
+      { k: 'id',          label: 'ID',                      field: 'id',          w: 10,  num: false, def: true  },
+      { k: 'name',        label: T('col_name'),              field: 'name',        w: 22,  num: false, def: true  },
+      { k: 'alliance',    label: T('col_alliance'),          field: 'alliance',    w: 12,  num: false, def: true  },
+      { k: 'power',       label: T('col_power'),             field: 'power',       w: 18,  num: true,  def: true  },
+      { k: 'merit',       label: T('col_merit'),             field: 'merit',       w: 18,  num: true,  def: true, sortDef: true },
+      { k: 'meritRate',   label: T('col_merit_rate'),        field: 'meritRate',   w: 12,  num: true,  def: true, pct: true },
+      { k: 'kill',        label: T('col_kill'),              field: 'kill',        w: 18,  num: true,  def: true  },
+      { k: 'dead',        label: T('col_dead'),              field: 'dead',        w: 15,  num: true,  def: true  },
+      { k: 'heal',        label: T('col_heal'),              field: 'heal',        w: 18,  num: true,  def: true  },
+      { k: 'manaSpend',   label: T('col_mana_spend'),        field: 'manaSpend',   w: 18,  num: true,  def: true  },
+      { k: 'goldSpend',   label: T('col_gold_spend'),        field: 'goldSpend',   w: 18,  num: true,  def: false },
+      { k: 'woodSpend',   label: T('col_wood_spend'),        field: 'woodSpend',   w: 18,  num: true,  def: false },
+      { k: 'stoneSpend',  label: T('col_stone_spend'),       field: 'stoneSpend',  w: 18,  num: true,  def: false },
+      { k: 'gemSpend',    label: T('col_gem_spend'),         field: 'gemSpend',    w: 15,  num: true,  def: false },
+      { k: 'goldGather',  label: T('col_gold_gather'),       field: 'goldGather',  w: 18,  num: true,  def: false },
+      { k: 'woodGather',  label: T('col_wood_gather'),       field: 'woodGather',  w: 18,  num: true,  def: false },
+      { k: 'stoneGather', label: T('col_stone_gather'),      field: 'stoneGather', w: 18,  num: true,  def: false },
+      { k: 'manaGather',  label: T('col_mana_gather'),       field: 'manaGather',  w: 18,  num: true,  def: false },
+      { k: 'gemGather',   label: T('col_gem_gather'),        field: 'gemGather',   w: 15,  num: true,  def: false },
+    ];
+
+    window.showViewExportModal = () => {
+      document.getElementById('viewExportOverlay')?.remove();
+      const ov = document.createElement('div');
+      ov.id = 'viewExportOverlay';
+      ov.className = 'modal-overlay open';
+      ov.onclick = e => { if (e.target === ov) closeViewExport(); };
+      ov.innerHTML = `
+        <div class="modal" style="max-width:600px">
+          <div class="modal-header">
+            <div>
+              <div style="font-size:1.05rem;color:var(--gold)">${T('excel_view_title')}</div>
+              <div style="font-size:.8rem;color:var(--text-dim);margin-top:3px" id="vExportSubtitle">${T('excel_pwd_subtitle')}</div>
+            </div>
+            <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem;flex-shrink:0" onclick="closeViewExport()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div id="vExportStep1">
+              <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${T('excel_pwd_label')}</div>
+              <div style="display:flex;gap:8px">
+                <div style="position:relative;flex:1">
+                  <input type="password" id="vExportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyViewExportPwd()">
+                  <button onclick="const i=document.getElementById('vExportPwdInput');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px">👁</button>
+                </div>
+                <button class="btn btn-primary" onclick="verifyViewExportPwd()">${T('excel_pwd_confirm')}</button>
+              </div>
+              <div id="vExportPwdErr" style="color:var(--red);font-size:.85rem;margin-top:8px;display:none">${T('excel_pwd_err')}</div>
+            </div>
+            <div id="vExportStep2" style="display:none"></div>
+          </div>
+        </div>`;
+      document.body.appendChild(ov);
+      setTimeout(() => document.getElementById('vExportPwdInput')?.focus(), 80);
+    };
+
+    window.closeViewExport = () => { document.getElementById('viewExportOverlay')?.remove(); };
+
+    window.verifyViewExportPwd = async () => {
+      const inp = document.getElementById('vExportPwdInput');
+      const errEl = document.getElementById('vExportPwdErr');
+      if (!inp) return;
+      inp.disabled = true;
+      const hash = await _hp(inp.value);
+      inp.disabled = false;
+      if (hash !== _EH) { errEl.style.display = 'block'; inp.value = ''; inp.focus(); return; }
+      errEl.style.display = 'none';
+      document.getElementById('vExportStep1').style.display = 'none';
+      document.getElementById('vExportSubtitle').textContent = T('excel_col_subtitle');
+      const step2 = document.getElementById('vExportStep2');
+      step2.style.display = 'block';
+      _renderViewExportCols(step2);
+    };
+
+    function _renderViewExportCols(container) {
+      const cols = EXPORT_VIEW_COLS_DEF();
+      const sortCols = cols.filter(c => c.num);
+      const srv = curServer || '?';
+      const dt = curDate ? fmtDate(curDate) : '—';
+      container.innerHTML = `
+        <div style="margin-bottom:14px">
+          <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">${T('excel_col_title')}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px">
+            ${cols.map(c => `<label style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--bg3);border:1px solid ${c.def ? 'var(--border-gold)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-size:.86rem" id="velbl_${c.k}">
+              <input type="checkbox" id="vecol_${c.k}" ${c.def ? 'checked' : ''} style="accent-color:var(--gold);width:14px;height:14px;flex-shrink:0" onchange="document.getElementById('velbl_${c.k}').style.borderColor=this.checked?'var(--border-gold)':'var(--border)'">
+              <span>${c.label}</span>
+            </label>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:14px">
+          <div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${T('excel_sort_label')}</div>
+            <select id="vExportSortCol" style="width:auto">${sortCols.map(c => `<option value="${c.field}" ${c.field === sortCol || c.sortDef ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${T('excel_dir_label')}</div>
+            <select id="vExportSortDir" style="width:auto">
+              <option value="desc" ${sortDir === 'desc' ? 'selected' : ''}>${T('dir_desc')}</option>
+              <option value="asc" ${sortDir === 'asc' ? 'selected' : ''}>${T('dir_asc')}</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px;text-align:right">
+            <div style="font-size:.75rem;color:var(--text-dim)">${T('excel_view_data_label')}</div>
+            <div style="font-size:.85rem;color:var(--gold);font-weight:600">Server ${srv} · ${dt}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="closeViewExport()">${T('excel_cancel')}</button>
+          <button class="btn btn-primary" onclick="runViewExport()">${T('excel_export_btn')}</button>
+        </div>`;
+    }
+
+    window.runViewExport = () => {
+      const selectedCols = EXPORT_VIEW_COLS_DEF().filter(c => document.getElementById('vecol_' + c.k)?.checked);
+      if (!selectedCols.length) { alert(T('excel_no_col')); return; }
+      const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
+      if (!rows.length) { alert(T('excel_view_no_data')); return; }
+      const sf = document.getElementById('vExportSortCol')?.value || 'merit';
+      const sd = document.getElementById('vExportSortDir')?.value || 'desc';
+      const sorted = [...rows].sort((a, b) => sd === 'desc' ? (+b[sf] || 0) - (+a[sf] || 0) : (+a[sf] || 0) - (+b[sf] || 0));
+      _doViewExcelExport(sorted, selectedCols);
+      closeViewExport();
+    };
+
+    function _doViewExcelExport(sorted, cols) {
+      const XLSXlib = window.XLSX;
+      if (!XLSXlib) { alert('Thư viện XLSX chưa tải xong, vui lòng thử lại!'); return; }
+      const srv = curServer || '?';
+      const dtFile = (curDate || '').replace(/-/g, '');
+      const sheetName = `S${srv} ${curDate || ''}`.substring(0, 31);
+
+      const hStyle = {
+        font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+        fill: { fgColor: { rgb: '1F3864' } },
+        alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+        border: { top: { style: 'thin', color: { rgb: '2E4272' } }, bottom: { style: 'thin', color: { rgb: '2E4272' } }, left: { style: 'thin', color: { rgb: '2E4272' } }, right: { style: 'thin', color: { rgb: '2E4272' } } }
+      };
+      const hStyleL = { ...hStyle, alignment: { ...hStyle.alignment, horizontal: 'left' } };
+      const rowFills = [{ rgb: 'FFD700' }, { rgb: 'BFBFBF' }, { rgb: 'F4C270' }];
+      const cellBorder = { top: { style: 'thin', color: { rgb: 'D9E1F2' } }, bottom: { style: 'thin', color: { rgb: 'D9E1F2' } }, left: { style: 'thin', color: { rgb: 'D9E1F2' } }, right: { style: 'thin', color: { rgb: 'D9E1F2' } } };
+
+      function cellStyle(isNum, rowIdx, col = null) {
+        const fill = { fgColor: rowIdx < 3 ? rowFills[rowIdx] : (rowIdx % 2 === 0 ? { rgb: 'EEF2FF' } : { rgb: 'FFFFFF' }) };
+        return {
+          font: { bold: rowIdx < 3, color: { rgb: '1A1A2E' }, sz: 10 },
+          fill, alignment: { horizontal: isNum ? 'right' : 'left', vertical: 'center' },
+          border: cellBorder, numFmt: isNum ? (col?.pct ? '0.00' : '#,##0') : '@'
+        };
+      }
+
+      const aoa = [], styles = [];
+      aoa.push(['#', ...cols.map(c => c.label)]);
+      styles.push([hStyle, ...cols.map(c => c.num ? hStyle : hStyleL)]);
+
+      sorted.forEach((r, i) => {
+        const vals = [i + 1];
+        const rowS = [{ ...cellStyle(true, i), alignment: { horizontal: 'center', vertical: 'center' }, numFmt: '0' }];
+        cols.forEach(c => {
+          let v = r[c.field];
+          if (c.num) v = (v == null || v === '') ? 0 : +v || 0;
+          else v = v != null ? String(v) : '';
+          vals.push(v);
+          rowS.push(cellStyle(c.num, i, c));
+        });
+        aoa.push(vals); styles.push(rowS);
+      });
+
+      const ws = XLSXlib.utils.aoa_to_sheet(aoa);
+      const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      styles.forEach((rowS, ri) => {
+        rowS.forEach((s, ci) => {
+          const col = ci < 26 ? alpha[ci] : alpha[Math.floor(ci / 26) - 1] + alpha[ci % 26];
+          const ca = `${col}${ri + 1}`;
+          if (!ws[ca]) ws[ca] = { v: aoa[ri][ci], t: typeof aoa[ri][ci] === 'number' ? 'n' : 's' };
+          ws[ca].s = s;
+          if (s.numFmt && typeof aoa[ri][ci] === 'number') ws[ca].z = s.numFmt;
+        });
+      });
+
+      ws['!cols'] = [{ wch: 5 }, ...cols.map(c => ({ wch: c.w }))];
+      ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' };
+      const lastCol = alpha[cols.length] || alpha[cols.length % 26];
+      ws['!autofilter'] = { ref: `A1:${lastCol}1` };
+      ws['!ref'] = XLSXlib.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: sorted.length, c: cols.length } });
+
+      const wb = XLSXlib.utils.book_new();
+      XLSXlib.utils.book_append_sheet(wb, ws, sheetName);
+      const infoWs = XLSXlib.utils.aoa_to_sheet([
+        [T('excel_info_title')],
+        [`${T('excel_info_server')} ${srv}`],
+        [`${T('excel_info_date')} ${fmtDate(curDate || '')}`],
+        [`${T('excel_info_export')} ${new Date().toLocaleString(getLang() === 'vi' ? 'vi-VN' : 'en-US')}`],
+      ]);
+      XLSXlib.utils.book_append_sheet(wb, infoWs, 'Info');
       XLSXlib.writeFile(wb, `Alliance_S${srv}_${dtFile}.xlsx`);
     }
 
