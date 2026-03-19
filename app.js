@@ -222,6 +222,8 @@
     }
     window.refreshData = () => { _updateRefreshBtn(true); loadData(false); };
 
+    const _PINNED_SERVERS = ['174', '104'];
+    const _sortServers = keys => { const pinned = _PINNED_SERVERS.filter(k => keys.includes(k)); const rest = keys.filter(k => !_PINNED_SERVERS.includes(k)).sort((a, b) => +a - +b); return [...pinned, ...rest]; };
     const fmtNum = n => { if (!n || isNaN(n)) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return Number(n).toLocaleString(); };
     const fmtFull = n => { if (!n || isNaN(n)) return '0'; return Number(n).toLocaleString('de-DE'); };
     const fmtAuto = (n, fmt) => fmt === 'short' ? fmtNum(n) : fmtFull(n);
@@ -252,14 +254,14 @@
     }
 
     function renderView() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       if (!curServer && servers.length) curServer = servers[0];
       if (curServer && DATA[curServer]) { const ds = Object.keys(DATA[curServer]).sort(); if (!curDate || !DATA[curServer][curDate]) curDate = ds[ds.length - 1]; }
       const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
       const dates = curServer && DATA[curServer] ? Object.keys(DATA[curServer]).sort().reverse() : [];
       let html = `<div class="panel"><div class="panel-title">${T('select_server')}</div>`;
       if (!servers.length) html += `<div class="empty">⚔️<br><br>${T('no_data_admin')}</div>`;
-      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
+      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''} ${s === '174' ? 'server-home' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}${s === '174' ? ' <span style="font-size:.55rem;font-family:\'Rajdhani\',sans-serif;color:var(--gold);letter-spacing:1px;vertical-align:middle;opacity:.9">HOME</span>' : ''}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
       html += `</div>`;
       if (curServer && dates.length) {
         html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
@@ -267,6 +269,7 @@
           const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
           html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
+          html += _buildViewCharts(rows);
         }
         const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') }];
         const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]);
@@ -352,7 +355,7 @@
     function filterDiffs(diffs) { const q = cmpSearchQ.trim().toLowerCase(); if (!q) return diffs; return diffs.filter(d => d.name.toLowerCase().includes(q) || d.alliance.toLowerCase().includes(q) || d.id.toString().includes(q)); }
 
     function renderCompare() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">${T('no_data_cmp')}</div>`; return; }
       if (!cmpSrv || !DATA[cmpSrv]) cmpSrv = curServer || servers[0];
       const dates = DATA[cmpSrv] ? Object.keys(DATA[cmpSrv]).sort() : [];
@@ -575,7 +578,7 @@
     const _DELTA_KEYS = ['power', 'merit', 'kill', 'dead', 'heal', 'manaSpend', 'goldSpend', 'woodSpend', 'stoneSpend', 'gemSpend', 'goldGather', 'woodGather', 'stoneGather', 'manaGather', 'gemGather'];
 
     function _getAllianceRows() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       const allRows = [], srvInfo = [];
       const isRange = allianceDataMode === 'growth' && !!(allianceFromDate && allianceFromDate !== allianceToDate);
       servers.forEach(srv => {
@@ -937,7 +940,7 @@
               <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${T('excel_pwd_label')}</div>
               <div style="display:flex;gap:8px">
                 <div style="position:relative;flex:1">
-                  <input type="password" id="exportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyExportPwd()">
+                  <input type="password" id="exportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" autocomplete="new-password" onkeydown="if(event.key==='Enter')verifyExportPwd()">
                   <button onclick="const i=document.getElementById('exportPwdInput');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px">👁</button>
                 </div>
                 <button class="btn btn-primary" onclick="verifyExportPwd()">${T('excel_pwd_confirm')}</button>
@@ -1186,7 +1189,7 @@
               <div style="font-size:.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${T('excel_pwd_label')}</div>
               <div style="display:flex;gap:8px">
                 <div style="position:relative;flex:1">
-                  <input type="password" id="vExportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" onkeydown="if(event.key==='Enter')verifyViewExportPwd()">
+                  <input type="password" id="vExportPwdInput" placeholder="${T('excel_pwd_input')}" style="padding-right:42px" autocomplete="new-password" onkeydown="if(event.key==='Enter')verifyViewExportPwd()">
                   <button onclick="const i=document.getElementById('vExportPwdInput');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;padding:2px">👁</button>
                 </div>
                 <button class="btn btn-primary" onclick="verifyViewExportPwd()">${T('excel_pwd_confirm')}</button>
@@ -1339,6 +1342,51 @@
       ]);
       XLSXlib.utils.book_append_sheet(wb, infoWs, 'Info');
       XLSXlib.writeFile(wb, `Alliance_S${srv}_${dtFile}.xlsx`);
+    }
+
+    // ══════════════════════════════════════════════
+    // CHARTS (View tab)
+    // ══════════════════════════════════════════════
+    function _buildViewCharts(rows) {
+      if (!rows || !rows.length) return '';
+
+      // ── Donut: power distribution ──
+      const PG = [
+        { label: '15–40M', color: '#00b4d8', min: 15e6, max: 40e6 },
+        { label: '40–60M', color: '#3dffa0', min: 40e6, max: 60e6 },
+        { label: '60–100M', color: '#f0b429', min: 60e6, max: 100e6 },
+        { label: '100M+',  color: '#ff6b35', min: 100e6, max: Infinity },
+      ];
+      const pc = PG.map(g => rows.filter(r => r.power >= g.min && r.power < g.max).length);
+      const pt = pc.reduce((s, c) => s + c, 0) || 1;
+      const R = 40, CX = 55, CY = 55, SW = 13, circ = 2 * Math.PI * R;
+      let off = circ / 4; // start at top
+      const segs = PG.map((g, i) => {
+        const len = pc[i] / pt * circ;
+        const s = `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${g.color}" stroke-width="${SW}" stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" opacity="${pc[i] ? 1 : 0.1}"/>`;
+        off -= len;
+        return s;
+      }).join('');
+      const legend = PG.map((g, i) => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0;opacity:${pc[i] ? 1 : 0.3}"></span><span style="font-size:.72rem;color:var(--text-dim);flex:1">${g.label}</span><b style="font-size:.74rem">${pc[i]}</b><span style="font-size:.68rem;color:var(--text-dim);width:32px;text-align:right">${Math.round(pc[i]/pt*100)}%</span></div>`).join('');
+      const donut = `<div style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 110 110" width="96" height="96" style="flex-shrink:0"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}<text x="${CX}" y="${CY-3}" text-anchor="middle" fill="var(--gold)" font-size="14" font-weight="700" font-family="Cinzel,serif">${rows.length}</text><text x="${CX}" y="${CY+10}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="7.5">players</text></svg><div style="flex:1">${legend}</div></div>`;
+
+      // ── Horizontal bar chart ──
+      function barChart(field, color) {
+        const top = [...rows].filter(r => (r[field] || 0) > 0).sort((a, b) => b[field] - a[field]).slice(0, 8);
+        if (!top.length) return `<div style="color:var(--text-dim);font-size:.8rem;text-align:center;padding:20px 0">—</div>`;
+        const mx = top[0][field];
+        return top.map((r, i) => {
+          const pct = (r[field] / mx * 100).toFixed(1);
+          const nm = r.name.length > 12 ? r.name.slice(0, 11) + '…' : r.name;
+          return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><span style="width:14px;font-size:.67rem;color:var(--text-dim);text-align:right;flex-shrink:0">${i+1}</span><span style="width:76px;font-size:.71rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${r.name}">${nm}</span><div style="flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:11px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div></div><span style="width:42px;text-align:right;font-size:.7rem;color:${color};font-weight:600;flex-shrink:0">${fmtNum(r[field])}</span></div>`;
+        }).join('');
+      }
+
+      return `<div class="charts-row">
+        <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_power_dist')}</div>${donut}</div>
+        <div class="chart-card"><div class="chart-title">🏆 ${T('chart_top_merit')}</div>${barChart('merit','#a78bfa')}</div>
+        <div class="chart-card"><div class="chart-title">💧 ${T('chart_top_mana')}</div>${barChart('manaSpend','#00b4d8')}</div>
+      </div>`;
     }
 
     // ── Language toggle ──

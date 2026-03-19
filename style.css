@@ -298,6 +298,15 @@
       opacity: 1
     }
 
+    .server-card.server-home {
+      border-color: rgba(240, 180, 41, .5);
+      box-shadow: 0 0 14px rgba(240, 180, 41, .12), inset 0 0 20px rgba(240, 180, 41, .04)
+    }
+
+    .server-card.server-home .server-num {
+      color: var(--gold)
+    }
+
     .server-num {
       font-family: 'Cinzel', serif;
       font-size: 1.3rem;
@@ -946,6 +955,36 @@
       text-align: center;
       padding: 40px;
       color: var(--text-dim)
+    }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px
+    }
+
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px
+    }
+
+    .chart-title {
+      font-family: 'Cinzel', serif;
+      font-size: .75rem;
+      color: var(--gold);
+      letter-spacing: .5px;
+      margin-bottom: 11px
+    }
+
+    @media(max-width:900px) {
+      .charts-row { grid-template-columns: 1fr 1fr }
+    }
+
+    @media(max-width:600px) {
+      .charts-row { grid-template-columns: 1fr }
     }
 
     .saving-badge {

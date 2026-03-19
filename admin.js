@@ -179,6 +179,8 @@
     window.doLogin = async () => { const email = document.getElementById('loginEmail').value.trim(), pw = document.getElementById('loginPassword').value, err = document.getElementById('loginError'), btn = document.getElementById('loginBtn'); if (!email || !pw) { err.textContent = T('login_empty'); err.style.display = ''; return; } btn.textContent = T('login_submitting'); btn.disabled = true; err.style.display = 'none'; try { await signInWithEmailAndPassword(fbAuth, email, pw); } catch (e) { const m = { 'auth/invalid-credential': 'Sai email hoặc mật khẩu!', 'auth/wrong-password': 'Sai email hoặc mật khẩu!', 'auth/user-not-found': 'Email không tồn tại!', 'auth/too-many-requests': 'Quá nhiều lần thử!', 'auth/invalid-email': 'Email không hợp lệ!' }; err.textContent = m[e.code] || 'Đăng nhập thất bại!'; err.style.display = ''; } btn.textContent = T('login_submit'); btn.disabled = false; };
     window.doLogout = async () => { await signOut(fbAuth); };
 
+    const _PINNED_SERVERS = ['174', '104'];
+    const _sortServers = keys => { const pinned = _PINNED_SERVERS.filter(k => keys.includes(k)); const rest = keys.filter(k => !_PINNED_SERVERS.includes(k)).sort((a, b) => +a - +b); return [...pinned, ...rest]; };
     const fmtNum = n => { if (!n || isNaN(n)) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return Number(n).toLocaleString(); };
     const fmtFull = n => { if (!n || isNaN(n)) return '0'; return Number(n).toLocaleString('de-DE'); };
     const fmtAuto = (n, fmt) => fmt === 'short' ? fmtNum(n) : fmtFull(n);
@@ -221,14 +223,14 @@
     }
 
     function renderView() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       if (!curServer && servers.length) curServer = servers[0];
       if (curServer && DATA[curServer]) { const ds = Object.keys(DATA[curServer]).sort(); if (!curDate || !DATA[curServer][curDate]) curDate = ds[ds.length - 1]; }
       const rows = (curServer && curDate && DATA[curServer]?.[curDate]) || [];
       const dates = curServer && DATA[curServer] ? Object.keys(DATA[curServer]).sort().reverse() : [];
       let html = `<div class="panel"><div class="panel-title">${T('select_server')}</div>`;
       if (!servers.length) html += `<div class="empty">⚔️<br><br>${T('no_data_admin')}</div>`;
-      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
+      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''} ${s === '174' ? 'server-home' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}${s === '174' ? ' <span style="font-size:.55rem;font-family:\'Rajdhani\',sans-serif;color:var(--gold);letter-spacing:1px;vertical-align:middle;opacity:.9">HOME</span>' : ''}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
       html += `</div>`;
       if (curServer && dates.length) {
         html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}${isAdmin ? `<button class="chip-del" onclick="event.stopPropagation();deleteDate('${curServer}','${d}')">✕</button>` : ''}</div>`).join('')}</div></div>`;
@@ -236,6 +238,7 @@
           const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
           html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
+          html += _buildViewCharts(rows);
         }
         const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') }];
         const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]);
@@ -313,7 +316,7 @@
     function filterDiffs(diffs) { const q = cmpSearchQ.trim().toLowerCase(); if (!q) return diffs; return diffs.filter(d => d.name.toLowerCase().includes(q) || d.alliance.toLowerCase().includes(q) || d.id.toString().includes(q)); }
 
     function renderCompare() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       if (!servers.length) { document.getElementById('tab-compare').innerHTML = `<div class="panel empty">${T('no_data_cmp')}</div>`; return; }
       if (!cmpSrv || !DATA[cmpSrv]) cmpSrv = curServer || servers[0];
       const dates = DATA[cmpSrv] ? Object.keys(DATA[cmpSrv]).sort() : [];
@@ -517,6 +520,16 @@
     function renderImport() {
       document.getElementById('tab-import').innerHTML = `
       <div class="panel">
+        <div class="panel-title">📦 Nhập Nhiều Server Cùng Lúc</div>
+        <div style="font-size:.82rem;color:var(--text-dim);margin-bottom:10px;line-height:1.7">Dán dữ liệu nhiều server vào đây — các server cách nhau bằng dòng <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;color:var(--gold)">===...</code></div>
+        <textarea id="batchImportTxt" style="min-height:200px" placeholder="=================================&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 19/03/2026 17:27&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }&#10;=================================&#10;Thông tin server: 175&#10;Dữ liệu được lấy lúc: 19/03/2026 17:30&#10;{ 1234567, &quot;Other&quot;, &quot;ABX&quot;, ... }"></textarea>
+        <div class="flex-row" style="margin-top:12px">
+          <button class="btn btn-primary" id="batchImportBtn" onclick="doBatchImport()">⚡ Nhập Tất Cả</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('batchImportTxt').value='';document.getElementById('batchImportStatus').className='status'">Xóa</button>
+        </div>
+        <div id="batchImportStatus" class="status"></div>
+      </div>
+      <div class="panel">
         <div class="panel-title">${T('import_title')}</div>
         <textarea id="importTxt" placeholder="Dán dữ liệu từ Tabi vào đây...&#10;&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 9/3/2026&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }"></textarea>
         <div style="font-size:.8rem;color:var(--text-dim);margin-top:7px;line-height:1.7"><b style="color:var(--gold)">${T('import_replace_label')}</b> → ${T('import_replace_desc')} &nbsp;·&nbsp; <b style="color:var(--green)">${T('import_new_label')}</b> → ${T('import_new_desc')}</div>
@@ -531,6 +544,75 @@
         <div style="font-size:.85rem;color:var(--text-dim);line-height:2.1">${T('import_guide')}</div>
       </div>`;
     }
+
+    window.doBatchImport = async () => {
+      const raw = document.getElementById('batchImportTxt').value.trim();
+      const st = document.getElementById('batchImportStatus');
+      if (!raw) { st.className = 'status error show'; st.textContent = T('import_empty'); return; }
+      const blocks = raw.split(/={3,}/g).map(b => b.trim()).filter(b => b.length > 0);
+      if (!blocks.length) { st.className = 'status error show'; st.textContent = '❌ Không tìm thấy khối dữ liệu nào!'; return; }
+      const btn = document.getElementById('batchImportBtn');
+      btn.disabled = true; btn.textContent = `Đang nhập 0/${blocks.length}...`;
+      const results = [];
+      for (let i = 0; i < blocks.length; i++) {
+        btn.textContent = `Đang nhập ${i + 1}/${blocks.length}...`;
+        try {
+          const { server, dateKey, rows } = parseRaw(blocks[i]);
+          await saveData(`servers/${server}/${dateKey}`, rows);
+          results.push({ ok: true, server, dateKey, count: rows.length });
+        } catch (e) {
+          results.push({ ok: false, error: e.message });
+        }
+      }
+      btn.disabled = false; btn.textContent = '⚡ Nhập Tất Cả';
+      const ok = results.filter(r => r.ok), err = results.filter(r => !r.ok);
+      if (ok.length > 0) {
+        document.getElementById('batchImportTxt').value = '';
+        _showBatchSuccessPopup(results, ok.length, err.length);
+      }
+      if (err.length > 0 && ok.length === 0) {
+        st.className = 'status error show';
+        st.textContent = `❌ Tất cả thất bại: ${err.map(r => r.error).join('; ')}`;
+      } else {
+        st.className = 'status success show';
+        st.textContent = `✅ Đã nhập ${ok.length} server thành công${err.length > 0 ? `, ${err.length} lỗi` : ''}`;
+        setTimeout(() => { if (st) st.className = 'status'; }, 6000);
+      }
+    };
+
+    function _showBatchSuccessPopup(results, okCount, errCount) {
+      document.getElementById('batchSuccessPopup')?.remove();
+      const okItems = results.filter(r => r.ok), errItems = results.filter(r => !r.ok);
+      const overlay = document.createElement('div');
+      overlay.id = 'batchSuccessPopup';
+      overlay.className = 'modal-overlay open';
+      overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+      overlay.innerHTML = `
+      <div class="modal" style="max-width:480px">
+        <div class="modal-header">
+          <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold)">✅ Nhập Dữ Liệu Thành Công</div>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem" onclick="document.getElementById('batchSuccessPopup').remove()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="text-align:center;margin-bottom:16px">
+            <div style="font-size:2rem">🎉</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--green);margin-top:6px">Đã nhập ${okCount} server!</div>
+            ${errCount > 0 ? `<div style="font-size:.85rem;color:var(--red);margin-top:4px">${errCount} server bị lỗi</div>` : ''}
+          </div>
+          ${okItems.length ? `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:${errItems.length ? '10px' : '0'}">
+            ${okItems.map(r => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.85rem"><span style="color:var(--gold-light)">Server ${r.server} &nbsp;·&nbsp; ${fmtDate(r.dateKey)}</span><span style="color:var(--green)">${r.count} người chơi ✓</span></div>`).join('')}
+          </div>` : ''}
+          ${errItems.length ? `<div style="background:rgba(255,68,85,.05);border:1px solid rgba(255,68,85,.2);border-radius:8px;padding:12px">
+            ${errItems.map(r => `<div style="font-size:.82rem;color:var(--red);padding:3px 0">❌ ${r.error}</div>`).join('')}
+          </div>` : ''}
+          <div style="margin-top:14px;text-align:right">
+            <button class="btn btn-primary" onclick="document.getElementById('batchSuccessPopup').remove()">Đóng</button>
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
+
     window.doImport = async () => {
       const raw = document.getElementById('importTxt').value.trim();
       const st = document.getElementById('importStatus');
@@ -550,7 +632,7 @@
     // TAB: MANAGE
     // ════════════════════════════════════
     function renderManage() {
-      const servers = Object.keys(DATA).sort((a, b) => +a - +b);
+      const servers = _sortServers(Object.keys(DATA));
       let html = `<div class="panel"><div class="panel-title">${T('manage_title')}</div>`;
       if (!servers.length) { html += `<div class="empty">${T('no_data_cmp')}</div>`; }
       else {
@@ -567,6 +649,46 @@
     window.deleteServer = async s => { if (!confirm(T('confirm_delete_server')(s))) return; await removeData(`servers/${s}`); if (curServer === s) { curServer = null; curDate = null; } };
     window.clearAll = async () => { if (!confirm(T('confirm_clear'))) return; await removeData('servers'); };
     window.exportData = () => { const b = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`; a.click(); };
+
+    // ══════════════════════════════════════════════
+    // CHARTS (View tab)
+    // ══════════════════════════════════════════════
+    function _buildViewCharts(rows) {
+      if (!rows || !rows.length) return '';
+      const PG = [
+        { label: '15–40M', color: '#00b4d8', min: 15e6, max: 40e6 },
+        { label: '40–60M', color: '#3dffa0', min: 40e6, max: 60e6 },
+        { label: '60–100M', color: '#f0b429', min: 60e6, max: 100e6 },
+        { label: '100M+',  color: '#ff6b35', min: 100e6, max: Infinity },
+      ];
+      const pc = PG.map(g => rows.filter(r => r.power >= g.min && r.power < g.max).length);
+      const pt = pc.reduce((s, c) => s + c, 0) || 1;
+      const R = 40, CX = 55, CY = 55, SW = 13, circ = 2 * Math.PI * R;
+      let off = circ / 4;
+      const segs = PG.map((g, i) => {
+        const len = pc[i] / pt * circ;
+        const s = `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${g.color}" stroke-width="${SW}" stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" opacity="${pc[i] ? 1 : 0.1}"/>`;
+        off -= len;
+        return s;
+      }).join('');
+      const legend = PG.map((g, i) => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0;opacity:${pc[i] ? 1 : 0.3}"></span><span style="font-size:.72rem;color:var(--text-dim);flex:1">${g.label}</span><b style="font-size:.74rem">${pc[i]}</b><span style="font-size:.68rem;color:var(--text-dim);width:32px;text-align:right">${Math.round(pc[i]/pt*100)}%</span></div>`).join('');
+      const donut = `<div style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 110 110" width="96" height="96" style="flex-shrink:0"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}<text x="${CX}" y="${CY-3}" text-anchor="middle" fill="var(--gold)" font-size="14" font-weight="700" font-family="Cinzel,serif">${rows.length}</text><text x="${CX}" y="${CY+10}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="7.5">players</text></svg><div style="flex:1">${legend}</div></div>`;
+      function barChart(field, color) {
+        const top = [...rows].filter(r => (r[field] || 0) > 0).sort((a, b) => b[field] - a[field]).slice(0, 8);
+        if (!top.length) return `<div style="color:var(--text-dim);font-size:.8rem;text-align:center;padding:20px 0">—</div>`;
+        const mx = top[0][field];
+        return top.map((r, i) => {
+          const pct = (r[field] / mx * 100).toFixed(1);
+          const nm = r.name.length > 12 ? r.name.slice(0, 11) + '…' : r.name;
+          return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px"><span style="width:14px;font-size:.67rem;color:var(--text-dim);text-align:right;flex-shrink:0">${i+1}</span><span style="width:76px;font-size:.71rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0" title="${r.name}">${nm}</span><div style="flex:1;background:rgba(255,255,255,.06);border-radius:3px;height:11px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:3px"></div></div><span style="width:42px;text-align:right;font-size:.7rem;color:${color};font-weight:600;flex-shrink:0">${fmtNum(r[field])}</span></div>`;
+        }).join('');
+      }
+      return `<div class="charts-row">
+        <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_power_dist')}</div>${donut}</div>
+        <div class="chart-card"><div class="chart-title">🏆 ${T('chart_top_merit')}</div>${barChart('merit','#a78bfa')}</div>
+        <div class="chart-card"><div class="chart-title">💧 ${T('chart_top_mana')}</div>${barChart('manaSpend','#00b4d8')}</div>
+      </div>`;
+    }
 
     // ── Language toggle ──
     window.toggleLang = () => {
