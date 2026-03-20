@@ -708,7 +708,7 @@
 
     function _buildServerAggRows(rows, allCols, isRange) {
       const fmt = n => allianceNumFmt === 'short' ? fmtNum(n) : fmtFull(n);
-      if (!rows.length) return `<tr class="no-results"><td colspan="${4 + allCols.length}">${T('not_found_row')}</td></tr>`;
+      if (!rows.length) return `<tr class="no-results"><td colspan="${4 + (allCols.length || 0)}">${T('not_found_row')}</td></tr>`;
       return rows.map((r, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1, rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
         return `<tr>
@@ -830,7 +830,6 @@
         const badge = isOn
           ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${fullFiltered.length} ${T('players_count')}`)
           : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')} · ${T('alliance_top500')}`;
-        const picker = makePicker('allianceColPick', FIXED, EXTRA, allianceExtraVis, 'onAllianceColToggle');
         const srvSortInd = allianceSortCol === '_server' ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕';
         html += `<div class="panel" style="padding:0;overflow:hidden;margin-bottom:0">
           <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -844,7 +843,6 @@
                 <button class="search-clear ${q ? 'show' : ''}" id="allianceSearchClear" onclick="onAllianceSearch('');document.getElementById('allianceSearchInput').value='';document.getElementById('allianceSearchInput').focus()">✕</button>
               </div>
               <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleAllianceFmt()">${allianceNumFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
-              ${picker}
             </div>
           </div>
           <div class="table-wrap" id="allianceTableWrap">
