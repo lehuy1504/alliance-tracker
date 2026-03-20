@@ -13,6 +13,19 @@
     let activeTab = 'view', sortCol = 'merit', sortDir = 'desc', numFmt = 'short', searchQuery = '';
     let cmpSrv = null, cmpD1 = null, cmpD2 = null;
     let cmpNumFmt = 'short', cmpSortKey = 'dm', cmpSortDir = 'desc', cmpSearchQ = '', cmpTop10Key = 'dm', top10Dir = 'desc';
+
+    // ── Import log (localStorage) ──
+    const _LOG_KEY = 'at_import_log_v1';
+    function _loadLog() { try { return JSON.parse(localStorage.getItem(_LOG_KEY) || '[]'); } catch { return []; } }
+    function _saveLog(log) { try { localStorage.setItem(_LOG_KEY, JSON.stringify(log)); } catch {} }
+    function _addLogEntry(server, dateKey, count, action) {
+      const log = _loadLog();
+      const now = new Date();
+      const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      log.unshift({ ts, server, dateKey, count, action });
+      if (log.length > 500) log.length = 500; // giới hạn 500 bản ghi
+      _saveLog(log);
+    }
     let _cmpDiffs = [];
 
     // ══════════════════════════════════════════════
@@ -517,6 +530,44 @@
     // ════════════════════════════════════
     // TAB: IMPORT
     // ════════════════════════════════════
+    function _renderImportLog() {
+      const wrap = document.getElementById('importLogWrap'); if (!wrap) return;
+      const log = _loadLog();
+      if (!log.length) { wrap.innerHTML = `<div style="color:var(--text-dim);font-size:.85rem;padding:10px 0">Chưa có lịch sử nhập nào.</div>`; return; }
+      wrap.innerHTML = log.map(e => {
+        const action = e.action === 'replace'
+          ? `<span style="color:var(--gold);font-size:.75rem;background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.25);border-radius:4px;padding:1px 7px">🔄 Thay thế</span>`
+          : `<span style="color:var(--green);font-size:.75rem;background:rgba(61,255,160,.1);border:1px solid rgba(61,255,160,.25);border-radius:4px;padding:1px 7px">✅ Thêm mới</span>`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.84rem;flex-wrap:wrap">
+          <span style="color:var(--text-dim);font-size:.75rem;white-space:nowrap;flex-shrink:0">${e.ts}</span>
+          <span style="color:var(--gold-light);font-weight:600;flex-shrink:0">S${e.server}</span>
+          <span style="color:var(--text-dim);flex-shrink:0">📅 ${fmtDate(e.dateKey)}</span>
+          <span style="color:var(--text);flex-shrink:0">${e.count} người chơi</span>
+          ${action}
+        </div>`;
+      }).join('');
+    }
+
+    window.exportImportLog = () => {
+      const log = _loadLog();
+      if (!log.length) { alert('Chưa có lịch sử nhập nào!'); return; }
+      const lines = ['LỊCH SỬ NHẬP DỮ LIỆU — ALLIANCE TRACKER', '='.repeat(50), ''];
+      log.forEach(e => {
+        const action = e.action === 'replace' ? '[Thay thế]' : '[Thêm mới]';
+        lines.push(`${e.ts}  |  Server ${e.server}  |  Ngày ${fmtDate(e.dateKey)}  |  ${e.count} người chơi  |  ${action}`);
+      });
+      lines.push('', `Xuất lúc: ${new Date().toLocaleString('vi-VN')}`);
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `import-log-${new Date().toISOString().slice(0,10)}.txt`; a.click();
+    };
+
+    window.clearImportLog = () => {
+      if (!confirm('Xóa toàn bộ lịch sử nhập?')) return;
+      _saveLog([]);
+      _renderImportLog();
+    };
+
     function renderImport() {
       document.getElementById('tab-import').innerHTML = `
       <div class="panel">
@@ -542,7 +593,18 @@
       <div class="panel">
         <div class="panel-title">${T('import_guide_title')}</div>
         <div style="font-size:.85rem;color:var(--text-dim);line-height:2.1">${T('import_guide')}</div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <div class="panel-title" style="margin:0">📋 Lịch Sử Nhập</div>
+          <div class="flex-row">
+            <button class="btn btn-ghost" style="padding:5px 14px;font-size:.8rem;border-color:rgba(240,180,41,.4);color:var(--gold-light)" onclick="exportImportLog()">⬇️ Xuất TXT</button>
+            <button class="btn btn-ghost" style="padding:5px 14px;font-size:.8rem;color:var(--text-dim)" onclick="clearImportLog()">🗑 Xóa</button>
+          </div>
+        </div>
+        <div id="importLogWrap"></div>
       </div>`;
+      _renderImportLog();
     }
 
     window.doBatchImport = async () => {
@@ -558,8 +620,9 @@
         btn.textContent = `Đang nhập ${i + 1}/${blocks.length}...`;
         try {
           const { server, dateKey, rows } = parseRaw(blocks[i]);
+          const replaced = !!(DATA[server]?.[dateKey]);
           await saveData(`servers/${server}/${dateKey}`, rows);
-          results.push({ ok: true, server, dateKey, count: rows.length });
+          results.push({ ok: true, server, dateKey, count: rows.length, replaced });
         } catch (e) {
           results.push({ ok: false, error: e.message });
         }
@@ -568,6 +631,8 @@
       const ok = results.filter(r => r.ok), err = results.filter(r => !r.ok);
       if (ok.length > 0) {
         document.getElementById('batchImportTxt').value = '';
+        ok.forEach(r => _addLogEntry(r.server, r.dateKey, r.count, r.replaced ? 'replace' : 'add'));
+        _renderImportLog();
         _showBatchSuccessPopup(results, ok.length, err.length);
       }
       if (err.length > 0 && ok.length === 0) {
@@ -621,6 +686,8 @@
         const { server, dateKey, rows } = parseRaw(raw);
         const isReplace = !!(DATA[server]?.[dateKey]);
         await saveData(`servers/${server}/${dateKey}`, rows);
+        _addLogEntry(server, dateKey, rows.length, isReplace ? 'replace' : 'add');
+        _renderImportLog();
         st.className = 'status success show';
         st.textContent = `${isReplace ? T('import_replaced') : T('import_added')} Server ${server} ngày ${fmtDate(dateKey)} — ${rows.length} ${T('players_count')}`;
         document.getElementById('importTxt').value = '';

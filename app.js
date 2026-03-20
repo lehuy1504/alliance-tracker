@@ -222,8 +222,20 @@
     }
     window.refreshData = () => { _updateRefreshBtn(true); loadData(false); };
 
-    const _PINNED_SERVERS = ['174', '104'];
+    const _PINNED_SERVERS = ['174', '104', '249', '283', '345', '357'];
     const _sortServers = keys => { const pinned = _PINNED_SERVERS.filter(k => keys.includes(k)); const rest = keys.filter(k => !_PINNED_SERVERS.includes(k)).sort((a, b) => +a - +b); return [...pinned, ...rest]; };
+    const SERVER_ALLIANCE = { '174': 'S2AK', '104': 'WI-C' };
+    let serverGridExpanded = false;
+    function _getDominantAlliance(srv) {
+      if (SERVER_ALLIANCE[srv]) return SERVER_ALLIANCE[srv];
+      const srvData = DATA[srv]; if (!srvData) return '';
+      const dates = Object.keys(srvData).sort();
+      const rows = srvData[dates[dates.length - 1]] || [];
+      const count = {};
+      rows.forEach(r => { if (r.alliance) count[r.alliance] = (count[r.alliance] || 0) + 1; });
+      const top = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+      return top ? top[0] : '';
+    }
     const fmtNum = n => { if (!n || isNaN(n)) return '0'; if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B'; if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M'; if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K'; return Number(n).toLocaleString(); };
     const fmtFull = n => { if (!n || isNaN(n)) return '0'; return Number(n).toLocaleString('de-DE'); };
     const fmtAuto = (n, fmt) => fmt === 'short' ? fmtNum(n) : fmtFull(n);
@@ -234,10 +246,14 @@
 
     function renderAll() { renderTabBar(); renderTab(activeTab); }
     function renderTabBar() {
-      const tabs = [['view', T('tab_view')], ['alliance', T('tab_alliance')], ['compare', T('tab_compare')]];
+      const tabs = [
+        { k: 'view',     icon: '📊', label: T('tab_view'),     color: '#b06aff' },
+        { k: 'alliance', icon: '🌐', label: T('tab_alliance'), color: '#4fa8ff' },
+        { k: 'compare',  icon: '⚖️', label: T('tab_compare'),  color: '#3dffa0' },
+      ];
       document.getElementById('tabBar').innerHTML =
-        tabs.map(([k, l]) => `<button class="tab-btn ${activeTab === k ? 'active' : ''}" data-tab="${k}" onclick="showTab('${k}')">${l}</button>`).join('') +
-        `<button id="refreshBtn" class="tab-btn" style="margin-left:auto;opacity:.75;font-size:.85rem" title="Tải lại dữ liệu" onclick="refreshData()">🔄</button>`;
+        tabs.map(t => `<button class="tab-btn ${activeTab === t.k ? 'active' : ''}" data-tab="${t.k}" onclick="showTab('${t.k}')" style="--tab-accent:${t.color}">${t.label}</button>`).join('') +
+        `<button id="refreshBtn" class="tab-btn" style="margin-left:auto;font-size:1rem;padding:8px 14px;border-bottom-color:transparent" title="Tải lại dữ liệu" onclick="refreshData()">🔄</button>`;
     }
     function renderTab(name) { if (name === 'view') renderView(); if (name === 'compare') renderCompare(); if (name === 'alliance') renderAlliance(); }
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
@@ -261,7 +277,28 @@
       const dates = curServer && DATA[curServer] ? Object.keys(DATA[curServer]).sort().reverse() : [];
       let html = `<div class="panel"><div class="panel-title">${T('select_server')}</div>`;
       if (!servers.length) html += `<div class="empty">⚔️<br><br>${T('no_data_admin')}</div>`;
-      else html += `<div class="server-grid">${servers.map(s => `<div class="server-card ${s === curServer ? 'active' : ''} ${s === '174' ? 'server-home' : ''}" onclick="selectServer('${s}')"><div class="server-num">S${s}${s === '174' ? ' <span style="font-size:.55rem;font-family:\'Rajdhani\',sans-serif;color:var(--gold);letter-spacing:1px;vertical-align:middle;opacity:.9">HOME</span>' : ''}</div><div class="server-sub">${T('server_prefix')} ${s}</div><div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div></div>`).join('')}</div>`;
+      else {
+        const _MAX_VISIBLE = 6;
+        const visibleServers = serverGridExpanded ? servers : servers.slice(0, _MAX_VISIBLE);
+        const hiddenCount = servers.length - _MAX_VISIBLE;
+        html += `<div class="server-grid">${visibleServers.map(s => {
+          const allyName = _getDominantAlliance(s);
+          const isHome = s === '174';
+          return `<div class="server-card ${s === curServer ? 'active' : ''} ${isHome ? 'server-home' : ''}" onclick="selectServer('${s}')">
+            <div class="server-num">S${s}${isHome ? ' <span style="font-size:.55rem;font-family:\'Rajdhani\',sans-serif;color:var(--gold);letter-spacing:1px;vertical-align:middle;opacity:.9">HOME</span>' : ''}</div>
+            ${allyName ? `<div class="server-ally-tag">${allyName}</div>` : ''}
+            <div class="server-sub">${T('server_prefix')} ${s}</div>
+            <div class="server-days">📅 ${Object.keys(DATA[s]).length} ${T('server_days')}</div>
+          </div>`;
+        }).join('')}</div>`;
+        if (servers.length > _MAX_VISIBLE) {
+          html += `<div style="text-align:center;margin-top:12px">
+            <button class="btn btn-ghost" style="font-size:.95rem;font-weight:600;padding:8px 28px;border-radius:20px;letter-spacing:.5px" onclick="toggleServerGrid()">
+              ${serverGridExpanded ? T('server_collapse') : T('server_expand_btn')(hiddenCount)}
+            </button>
+          </div>`;
+        }
+      }
       html += `</div>`;
       if (curServer && dates.length) {
         html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
@@ -296,6 +333,7 @@
     }
 
     window.selectServer = s => { curServer = s; curDate = null; searchQuery = ''; renderView(); };
+    window.toggleServerGrid = () => { serverGridExpanded = !serverGridExpanded; renderView(); };
     window.selectDate = d => { curDate = d; renderView(); };
     window.setSortColFn = c => { if (c === sortCol) sortDir = sortDir === 'desc' ? 'asc' : 'desc'; else { sortCol = c; sortDir = 'desc'; } renderView(); };
     window.toggleFmt = () => { numFmt = numFmt === 'short' ? 'full' : 'short'; renderView(); };
@@ -366,7 +404,7 @@
       <div class="panel">
         <div class="panel-title">${T('cmp_title')}</div>
         <div class="flex-row" style="margin-bottom:16px;gap:12px">
-          <div><div class="section-label">Server</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>${T('server_prefix')} ${s}</option>`).join('')}</select></div>
+          <div><div class="section-label">${T('server_prefix')}</div><select id="cmpSrvSel" style="width:auto" onchange="onCmpSrvChange(this.value)">${servers.map(s => `<option value="${s}" ${s === cmpSrv ? 'selected' : ''}>${T('server_prefix')} ${s}</option>`).join('')}</select></div>
           <div><div class="section-label">${T('cmp_date_before')}</div><select id="cmpD1Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
           <div><div class="section-label">${T('cmp_date_after')}</div><select id="cmpD2Sel" style="width:auto" onchange="onCmpDateChange()">${mkOpts(cmpSrv)}</select></div>
         </div>
@@ -641,16 +679,21 @@
     }
 
     function _getServerAggRows(allRows) {
-      const map = {};
+      const map = {}, allyCount = {};
       allRows.forEach(r => {
         const s = r._server;
-        if (!map[s]) map[s] = { _server: s, power: 0, merit: 0, kill: 0, dead: 0, heal: 0, manaSpend: 0, goldSpend: 0, woodSpend: 0, stoneSpend: 0, gemSpend: 0, goldGather: 0, woodGather: 0, stoneGather: 0, manaGather: 0, gemGather: 0, _playerCount: 0 };
+        if (!map[s]) { map[s] = { _server: s, power: 0, merit: 0, kill: 0, dead: 0, heal: 0, manaSpend: 0, goldSpend: 0, woodSpend: 0, stoneSpend: 0, gemSpend: 0, goldGather: 0, woodGather: 0, stoneGather: 0, manaGather: 0, gemGather: 0, _playerCount: 0 }; allyCount[s] = {}; }
         const m = map[s];
         m.power += r.power || 0; m.merit += r.merit || 0; m.kill += r.kill || 0; m.dead += r.dead || 0;
         m.heal += r.heal || 0; m.manaSpend += r.manaSpend || 0; m.goldSpend += r.goldSpend || 0;
         m.woodSpend += r.woodSpend || 0; m.stoneSpend += r.stoneSpend || 0; m.gemSpend += r.gemSpend || 0;
         m.goldGather += r.goldGather || 0; m.woodGather += r.woodGather || 0; m.stoneGather += r.stoneGather || 0;
         m.manaGather += r.manaGather || 0; m.gemGather += r.gemGather || 0; m._playerCount++;
+        if (r.alliance) allyCount[s][r.alliance] = (allyCount[s][r.alliance] || 0) + 1;
+      });
+      Object.keys(map).forEach(s => {
+        const top = Object.entries(allyCount[s] || {}).sort((a, b) => b[1] - a[1])[0];
+        map[s]._topAlliance = top ? top[0] : '';
       });
       return Object.values(map);
     }
@@ -665,12 +708,13 @@
 
     function _buildServerAggRows(rows, allCols, isRange) {
       const fmt = n => allianceNumFmt === 'short' ? fmtNum(n) : fmtFull(n);
-      if (!rows.length) return `<tr class="no-results"><td colspan="${3 + allCols.length}">${T('not_found_row')}</td></tr>`;
+      if (!rows.length) return `<tr class="no-results"><td colspan="${4 + allCols.length}">${T('not_found_row')}</td></tr>`;
       return rows.map((r, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1, rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
         return `<tr>
           <td class="rank ${rc}">${medal}</td>
           <td style="text-align:center;font-weight:600;color:var(--gold-light);font-size:1rem">S${r._server}</td>
+          <td class="left ally" style="min-width:80px">${r._topAlliance ? `[${r._topAlliance}]` : '—'}</td>
           <td style="text-align:center;color:var(--text-dim)">${r._playerCount}</td>
           ${allCols.map(c => c.k === 'meritRate' ? `<td class="rate">—</td>` : `<td>${_fmtCell(r[c.k], isRange, fmt)}</td>`).join('')}
         </tr>`;
@@ -739,7 +783,7 @@
         const al = [...new Set(allRows.map(r => r.alliance))];
         const fmtStat = n => isRange ? (n >= 0 ? `▲ ${fmtNum(n)}` : `▼ ${fmtNum(Math.abs(n))}`) : fmtNum(n);
         html += `<div class="stats-row">
-          <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${allRows.length}</div><div class="stat-sub">${servers.length} servers · ${al.length} ${T('stat_alliances')}</div></div>
+          <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${allRows.length}</div><div class="stat-sub">${servers.length} ${T('server_count_unit')} · ${al.length} ${T('stat_alliances')}</div></div>
           <div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtStat(tP)}</div></div>
           <div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtStat(tM)}</div></div>
           <div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtStat(tK)}</div></div>
@@ -756,7 +800,7 @@
           <div style="padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div style="display:flex;align-items:center;gap:10px">
               <div class="panel-title" style="margin:0">${T('alliance_view_servers')}</div>
-              <span class="count-badge">${aggRows.length} servers</span>
+              <span class="count-badge">${aggRows.length} ${T('server_count_unit')}</span>
             </div>
             <div class="flex-row">
               <button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;min-width:100px" onclick="toggleAllianceFmt()">${allianceNumFmt === 'short' ? T('fmt_short') : T('fmt_full')}</button>
@@ -767,6 +811,7 @@
               <thead><tr>
                 <th style="width:38px">#</th>
                 <th class="${allianceSortCol === '_server' ? 'sorted' : ''}" onclick="setAllianceSort('_server')" style="width:70px">Server ${srvSortInd}</th>
+                <th class="left" style="min-width:80px">${T('col_alliance')}</th>
                 <th style="width:80px">${T('col_players')}</th>
                 ${allCols.map(c => `<th class="${allianceSortCol === c.k ? 'sorted' : ''}" onclick="setAllianceSort('${c.k}')" style="min-width:110px">${c.l} ${allianceSortCol === c.k ? (allianceSortDir === 'desc' ? '↓' : '↑') : '↕'}</th>`).join('')}
               </tr></thead>
@@ -1359,7 +1404,7 @@
       ];
       const pc = PG.map(g => rows.filter(r => r.power >= g.min && r.power < g.max).length);
       const pt = pc.reduce((s, c) => s + c, 0) || 1;
-      const R = 40, CX = 55, CY = 55, SW = 13, circ = 2 * Math.PI * R;
+      const R = 52, CX = 68, CY = 68, SW = 15, circ = 2 * Math.PI * R;
       let off = circ / 4; // start at top
       const segs = PG.map((g, i) => {
         const len = pc[i] / pt * circ;
@@ -1368,7 +1413,7 @@
         return s;
       }).join('');
       const legend = PG.map((g, i) => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0;opacity:${pc[i] ? 1 : 0.3}"></span><span style="font-size:.72rem;color:var(--text-dim);flex:1">${g.label}</span><b style="font-size:.74rem">${pc[i]}</b><span style="font-size:.68rem;color:var(--text-dim);width:32px;text-align:right">${Math.round(pc[i]/pt*100)}%</span></div>`).join('');
-      const donut = `<div style="display:flex;align-items:center;gap:10px"><svg viewBox="0 0 110 110" width="96" height="96" style="flex-shrink:0"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}<text x="${CX}" y="${CY-3}" text-anchor="middle" fill="var(--gold)" font-size="14" font-weight="700" font-family="Cinzel,serif">${rows.length}</text><text x="${CX}" y="${CY+10}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="7.5">players</text></svg><div style="flex:1">${legend}</div></div>`;
+      const donut = `<div style="display:flex;align-items:center;gap:12px"><svg viewBox="0 0 136 136" width="128" height="128" style="flex-shrink:0"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}<text x="${CX}" y="${CY-4}" text-anchor="middle" fill="var(--gold)" font-size="17" font-weight="700" font-family="Cinzel,serif">${rows.length}</text><text x="${CX}" y="${CY+11}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="9">${T('chart_players_label')}</text></svg><div style="flex:1">${legend}</div></div>`;
 
       // ── Horizontal bar chart ──
       function barChart(field, color) {

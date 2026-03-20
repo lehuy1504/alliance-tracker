@@ -79,6 +79,10 @@ const LANG = {
     alliance_mode_growth: '📈 Tăng trưởng',
     alliance_pick_from: 'Chọn "Từ ngày" để xem tăng trưởng',
     footer_contact: 'Liên hệ thêm data cho server của bạn:',
+    server_collapse: '▲ Thu gọn',
+    server_expand_btn: n => `▼ Xem tiếp ${n} server`,
+    server_count_unit: 'servers',
+    chart_players_label: 'người chơi',
   },
   en: {
     tab_view: '📊 View Data', tab_compare: '🔄 Compare', tab_import: '📥 Import Data', tab_manage: '⚙️ Manage',
@@ -159,6 +163,10 @@ const LANG = {
     alliance_mode_growth: '📈 Growth',
     alliance_pick_from: 'Select "From date" to view growth',
     footer_contact: 'Contact for data on your server:',
+    server_collapse: '▲ Collapse',
+    server_expand_btn: n => `▼ Show ${n} more`,
+    server_count_unit: 'servers',
+    chart_players_label: 'players',
   }
 };
 

@@ -90,35 +90,47 @@
       gap: 4px;
       background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 20px;
-      flex-wrap: wrap
+      border-radius: 12px;
+      padding: 5px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+      align-items: center
     }
 
     .tab-btn {
-      padding: 7px 18px;
-      border: 1px solid transparent;
-      border-radius: 7px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border: none;
+      border-bottom: 3px solid transparent;
+      border-radius: 8px 8px 0 0;
       background: transparent;
-      color: var(--text-dim);
+      color: #6677aa;
       font-family: 'Rajdhani', sans-serif;
-      font-size: .92rem;
+      font-size: 1.05rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all .2s;
-      letter-spacing: 1px
+      transition: color .18s, background .18s, border-color .18s;
+      letter-spacing: .5px;
+      white-space: nowrap
+    }
+
+    .tab-btn .tab-icon {
+      font-size: 1.1em;
+      line-height: 1
     }
 
     .tab-btn:hover {
       color: var(--text);
-      background: var(--bg3)
+      background: rgba(255,255,255,.04)
     }
 
     .tab-btn.active {
-      background: rgba(240, 180, 41, .15);
-      color: var(--gold);
-      border-color: var(--border-gold)
+      color: var(--tab-accent, var(--gold));
+      background: rgba(255,255,255,.06);
+      border-bottom-color: var(--tab-accent, var(--gold))
     }
 
     .panel {
@@ -324,6 +336,20 @@
       font-size: .7rem;
       color: var(--blue);
       margin-top: 5px
+    }
+
+    .server-ally-tag {
+      display: inline-block;
+      font-size: .68rem;
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      color: var(--gold);
+      background: rgba(240, 180, 41, .12);
+      border: 1px solid rgba(240, 180, 41, .3);
+      border-radius: 4px;
+      padding: 1px 7px;
+      margin-top: 3px;
+      letter-spacing: 1px
     }
 
     .date-list {
