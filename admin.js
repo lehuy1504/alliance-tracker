@@ -389,7 +389,7 @@
       <div style="margin-top:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
+            <span style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
             <span class="count-badge ${isOn ? 'on' : ''}" id="cmpBadge">${badge}</span>
           </div>
           <div class="flex-row">
@@ -655,7 +655,7 @@
       overlay.innerHTML = `
       <div class="modal" style="max-width:480px">
         <div class="modal-header">
-          <div style="font-family:'Cinzel',serif;font-size:1rem;color:var(--gold)">✅ Nhập Dữ Liệu Thành Công</div>
+          <div style="font-family:Arial,sans-serif;font-size:1rem;color:var(--gold)">✅ Nhập Dữ Liệu Thành Công</div>
           <button class="btn btn-ghost" style="padding:4px 10px;font-size:.85rem" onclick="document.getElementById('batchSuccessPopup').remove()">✕</button>
         </div>
         <div class="modal-body">
@@ -706,7 +706,7 @@
         html += servers.map(s => {
           const dates = Object.keys(DATA[s]).sort();
           const total = Object.values(DATA[s]).reduce((sum, r) => sum + r.length, 0);
-          return `<div class="manage-server"><div class="flex-row" style="justify-content:space-between;margin-bottom:10px"><div><span style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--gold)">${T('server_prefix')} ${s}</span><span style="color:var(--text-dim);font-size:.8rem;margin-left:10px">${dates.length} ${T('manage_days')} · ${total} ${T('manage_records')}</span></div><button class="btn btn-danger" style="padding:5px 12px;font-size:.82rem" onclick="deleteServer('${s}')">${T('manage_delete_server_btn')}</button></div><div class="date-list">${dates.map(d => `<div class="chip">📅 ${fmtDate(d)} (${DATA[s][d].length})<button class="chip-del" onclick="deleteDate('${s}','${d}')">✕</button></div>`).join('')}</div></div>`;
+          return `<div class="manage-server"><div class="flex-row" style="justify-content:space-between;margin-bottom:10px"><div><span style="font-family:Arial,sans-serif;font-size:1.05rem;color:var(--gold)">${T('server_prefix')} ${s}</span><span style="color:var(--text-dim);font-size:.8rem;margin-left:10px">${dates.length} ${T('manage_days')} · ${total} ${T('manage_records')}</span></div><button class="btn btn-danger" style="padding:5px 12px;font-size:.82rem" onclick="deleteServer('${s}')">${T('manage_delete_server_btn')}</button></div><div class="date-list">${dates.map(d => `<div class="chip">📅 ${fmtDate(d)} (${DATA[s][d].length})<button class="chip-del" onclick="deleteDate('${s}','${d}')">✕</button></div>`).join('')}</div></div>`;
         }).join('');
       }
       html += `</div><div class="panel"><div class="panel-title">${T('backup_title')}</div><div class="flex-row"><button class="btn btn-ghost" onclick="exportData()">${T('backup_export_btn')}</button></div><div style="font-size:.8rem;color:var(--text-dim);margin-top:8px">${T('backup_desc')}</div><div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)"><button class="btn btn-danger" onclick="clearAll()">${T('backup_clear_btn')}</button></div></div>`;

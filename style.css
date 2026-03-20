@@ -25,10 +25,13 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Rajdhani', sans-serif;
+      font-family: Arial, sans-serif;
       font-size: 15px;
+      line-height: 1.55;
       min-height: 100vh;
-      overflow-x: hidden
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale
     }
 
     body::before {
@@ -68,7 +71,7 @@
     }
 
     .logo {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-size: clamp(1.5rem, 4vw, 2.1rem);
       font-weight: 900;
       background: linear-gradient(135deg, #ffd97d, #f0b429, #c8830a);
@@ -79,8 +82,8 @@
 
     .subtitle {
       color: var(--text-dim);
-      font-size: .78rem;
-      letter-spacing: 5px;
+      font-size: .8rem;
+      letter-spacing: 2.5px;
       text-transform: uppercase;
       margin-top: 3px
     }
@@ -108,12 +111,12 @@
       border-radius: 8px 8px 0 0;
       background: transparent;
       color: #6677aa;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: 1.05rem;
+      font-family: Arial, sans-serif;
+      font-size: 1rem;
       font-weight: 600;
       cursor: pointer;
       transition: color .18s, background .18s, border-color .18s;
-      letter-spacing: .5px;
+      letter-spacing: 0;
       white-space: nowrap
     }
 
@@ -142,7 +145,7 @@
     }
 
     .panel-title {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-size: .95rem;
       color: var(--gold);
       letter-spacing: 2px;
@@ -163,12 +166,12 @@
       padding: 8px 20px;
       border: 1px solid transparent;
       border-radius: 8px;
-      font-family: 'Rajdhani', sans-serif;
-      font-size: .95rem;
-      font-weight: 700;
+      font-family: Arial, sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
       cursor: pointer;
       transition: all .2s;
-      letter-spacing: 1px
+      letter-spacing: 0
     }
 
     .btn-primary {
@@ -213,8 +216,8 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
-      font-family: 'Rajdhani', sans-serif;
-      font-size: .9rem;
+      font-family: Arial, sans-serif;
+      font-size: .92rem;
       padding: 9px 12px;
       outline: none;
       transition: border-color .2s
@@ -320,20 +323,20 @@
     }
 
     .server-num {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-size: 1.3rem;
       font-weight: 700;
       color: var(--gold)
     }
 
     .server-sub {
-      font-size: .72rem;
+      font-size: .76rem;
       color: var(--text-dim);
       margin-top: 2px
     }
 
     .server-days {
-      font-size: .7rem;
+      font-size: .74rem;
       color: var(--blue);
       margin-top: 5px
     }
@@ -341,7 +344,7 @@
     .server-ally-tag {
       display: inline-block;
       font-size: .68rem;
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-weight: 700;
       color: var(--gold);
       background: rgba(240, 180, 41, .12);
@@ -426,14 +429,14 @@
     }
 
     .stat-label {
-      font-size: .71rem;
+      font-size: .74rem;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: .5px;
       color: var(--text-dim)
     }
 
     .stat-val {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-size: 1.25rem;
       font-weight: 700;
       color: var(--accent, var(--gold));
@@ -441,7 +444,7 @@
     }
 
     .stat-sub {
-      font-size: .74rem;
+      font-size: .78rem;
       color: var(--text-dim);
       margin-top: 2px
     }
@@ -489,10 +492,10 @@
     th {
       padding: 10px 12px;
       text-align: center;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      font-size: .75rem;
-      letter-spacing: 1px;
+      font-family: Arial, sans-serif;
+      font-weight: 600;
+      font-size: .78rem;
+      letter-spacing: .3px;
       text-transform: uppercase;
       color: var(--text-dim);
       white-space: nowrap;
@@ -546,7 +549,7 @@
     }
 
     td.rank {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-weight: 700;
       color: var(--text-dim)
     }
@@ -620,7 +623,7 @@
     .count-badge {
       font-size: .78rem;
       color: var(--text-dim);
-      font-family: 'Rajdhani', sans-serif;
+      font-family: Arial, sans-serif;
       font-weight: 500;
       padding: 3px 10px;
       background: var(--bg3);
@@ -689,7 +692,7 @@
     }
 
     .cmp-title {
-      font-family: 'Cinzel', serif;
+      font-family: Arial, sans-serif;
       font-size: .82rem;
       color: var(--gold);
       margin-bottom: 9px
@@ -728,12 +731,12 @@
       border-radius: 20px;
       background: var(--bg3);
       color: var(--text-dim);
-      font-family: 'Rajdhani', sans-serif;
-      font-size: .8rem;
-      font-weight: 600;
+      font-family: Arial, sans-serif;
+      font-size: .82rem;
+      font-weight: 500;
       cursor: pointer;
       transition: all .2s;
-      letter-spacing: .5px;
+      letter-spacing: 0;
       white-space: nowrap
     }
 
@@ -763,7 +766,7 @@
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text-dim);
-      font-family: 'Rajdhani', sans-serif;
+      font-family: Arial, sans-serif;
       font-size: .82rem;
       font-weight: 600;
       cursor: pointer;
@@ -815,8 +818,8 @@
 
     .cpgroup-label {
       padding: 5px 14px 2px;
-      font-size: .67rem;
-      letter-spacing: 1.5px;
+      font-size: .72rem;
+      letter-spacing: .5px;
       color: var(--text-dim);
       text-transform: uppercase
     }
@@ -998,11 +1001,12 @@
     }
 
     .chart-title {
-      font-family: 'Cinzel', serif;
-      font-size: .75rem;
+      font-family: Arial, sans-serif;
+      font-size: .95rem;
+      font-weight: 700;
       color: var(--gold);
-      letter-spacing: .5px;
-      margin-bottom: 11px
+      letter-spacing: .3px;
+      margin-bottom: 12px
     }
 
     @media(max-width:900px) {

@@ -453,7 +453,7 @@
       <div style="margin-top:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <span style="font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
+            <span style="font-family:Arial,sans-serif;font-size:.85rem;color:var(--gold)">${T('cmp_detail')}</span>
             <span class="count-badge ${isOn ? 'on' : ''}" id="cmpBadge">${badge}</span>
             <button class="btn btn-ghost" style="padding:4px 11px;font-size:.78rem;border-color:rgba(240,180,41,.45);color:var(--gold-light);white-space:nowrap" onclick="showExportModal()">${T('excel_btn')}</button>
           </div>
@@ -1412,12 +1412,29 @@
         off -= len;
         return s;
       }).join('');
-      const legend = PG.map((g, i) => `<div style="display:flex;align-items:center;gap:6px;padding:3px 0"><span style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0;opacity:${pc[i] ? 1 : 0.3}"></span><span style="font-size:.72rem;color:var(--text-dim);flex:1">${g.label}</span><b style="font-size:.74rem">${pc[i]}</b><span style="font-size:.68rem;color:var(--text-dim);width:32px;text-align:right">${Math.round(pc[i]/pt*100)}%</span></div>`).join('');
-      const donut = `<div style="display:flex;align-items:center;gap:12px"><svg viewBox="0 0 136 136" width="128" height="128" style="flex-shrink:0"><circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}<text x="${CX}" y="${CY-4}" text-anchor="middle" fill="var(--gold)" font-size="17" font-weight="700" font-family="Cinzel,serif">${rows.length}</text><text x="${CX}" y="${CY+11}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="9">${T('chart_players_label')}</text></svg><div style="flex:1">${legend}</div></div>`;
+      const tierCards = PG.map((g, i) => {
+        const pct = Math.round(pc[i] / pt * 100);
+        return `<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 10px;border-left:3px solid ${g.color}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+            <span style="font-size:.72rem;color:var(--text-dim)">${g.label}</span>
+            <span style="font-size:.78rem;font-weight:700;color:${g.color}">${pct}%</span>
+          </div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:5px">${pc[i]} <span style="font-size:.68rem;font-weight:400;color:var(--text-dim)">${T('chart_players_label')}</span></div>
+          <div style="background:rgba(255,255,255,.07);border-radius:3px;height:5px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${g.color};border-radius:3px;transition:width .4s"></div></div>
+        </div>`;
+      }).join('');
+      const donut = `<div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <svg viewBox="0 0 136 136" width="136" height="136">
+          <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}"/>${segs}
+          <text x="${CX}" y="${CY-5}" text-anchor="middle" fill="var(--gold)" font-size="18" font-weight="700" font-family="Arial,sans-serif">${rows.length}</text>
+          <text x="${CX}" y="${CY+11}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="9" font-family="Arial,sans-serif">${T('chart_players_label')}</text>
+        </svg>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%">${tierCards}</div>
+      </div>`;
 
       // ── Horizontal bar chart ──
       function barChart(field, color) {
-        const top = [...rows].filter(r => (r[field] || 0) > 0).sort((a, b) => b[field] - a[field]).slice(0, 8);
+        const top = [...rows].filter(r => (r[field] || 0) > 0).sort((a, b) => b[field] - a[field]).slice(0, 15);
         if (!top.length) return `<div style="color:var(--text-dim);font-size:.8rem;text-align:center;padding:20px 0">—</div>`;
         const mx = top[0][field];
         return top.map((r, i) => {
