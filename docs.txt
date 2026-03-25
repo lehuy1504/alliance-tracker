@@ -1,0 +1,72 @@
+# Alliance Tracker API — Tài Liệu Hướng Dẫn
+
+**Base URL:** `https://alliance-tracker-api.lengochuy1504.workers.dev`
+
+---
+
+## Endpoints
+
+### 1. Lấy toàn bộ dữ liệu theo server
+GET /api/servers/{server}
+
+Ví dụ: GET /api/servers/174
+Trả về: Toàn bộ dữ liệu tất cả các ngày của server 174.
+
+### 2. Lấy dữ liệu theo ngày cụ thể
+GET /api/servers/{server}/{date}   (date format: YYYY-MM-DD)
+
+Ví dụ: GET /api/servers/174/2026-03-25
+Trả về: Danh sách người chơi của server 174 ngày 25/03/2026.
+
+---
+
+## Các trường dữ liệu
+
+| Trường      | Ý nghĩa            |
+|-------------|--------------------|
+| id          | ID người chơi      |
+| name        | Tên người chơi     |
+| alliance    | Liên minh          |
+| merit       | Công trạng         |
+| power       | Lực chiến hiện tại |
+| powerMax    | Lực chiến max      |
+| meritRate   | Tỉ lệ công trạng % |
+| kill        | Tiêu diệt          |
+| dead        | Tử trận            |
+| heal        | Chữa lính          |
+| goldSpend   | Vàng tiêu          |
+| woodSpend   | Gỗ tiêu            |
+| stoneSpend  | Đá tiêu            |
+| manaSpend   | Mana tiêu          |
+| gemSpend    | Gem tiêu           |
+| goldGather  | Vàng thu           |
+| woodGather  | Gỗ thu             |
+| stoneGather | Đá thu             |
+| manaGather  | Mana thu           |
+| gemGather   | Gem thu            |
+
+---
+
+## Mã lỗi
+
+| HTTP Code | Ý nghĩa                           |
+|-----------|-----------------------------------|
+| 400       | Sai format URL                    |
+| 403       | Server chưa được cấp quyền        |
+| 404       | Không có dữ liệu ngày này         |
+
+---
+
+## Ví dụ
+
+JavaScript:
+  const res = await fetch('https://alliance-tracker-api.lengochuy1504.workers.dev/api/servers/174/2026-03-25');
+  const data = await res.json();
+
+Python:
+  import requests
+  data = requests.get('https://alliance-tracker-api.lengochuy1504.workers.dev/api/servers/174/2026-03-25').json()
+
+---
+
+Liên hệ cấp quyền truy cập: Telegram @lengochuy1504

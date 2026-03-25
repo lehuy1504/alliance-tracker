@@ -9,7 +9,7 @@
     // Update loading text to match saved language
     { const el = document.getElementById('loadingText'); if (el) el.textContent = T('loading'); }
 
-    let DATA = {}, isAdmin = false, curServer = null, curDate = null;
+    let DATA = {}, apiConfig = {}, isAdmin = false, curServer = null, curDate = null;
     let activeTab = 'view', sortCol = 'merit', sortDir = 'desc', numFmt = 'short', searchQuery = '';
     let cmpSrv = null, cmpD1 = null, cmpD2 = null;
     let cmpNumFmt = 'short', cmpSortKey = 'dm', cmpSortDir = 'desc', cmpSearchQ = '', cmpTop10Key = 'dm', top10Dir = 'desc';
@@ -185,8 +185,51 @@
       document.getElementById('loadingScreen').style.display = 'none';
       renderAll();
     });
+    onValue(ref(fbDB, 'apiConfig/allowedServers'), snap => {
+      apiConfig = { allowedServers: snap.val() || {} };
+      if (activeTab === 'manage' && isAdmin) renderManage();
+    });
     async function saveData(p, v) { document.getElementById('savingBadge').style.display = ''; try { await set(ref(fbDB, p), v); } catch (e) { alert(T('err_save') + e.message); } document.getElementById('savingBadge').style.display = 'none'; }
     async function removeData(p) { document.getElementById('savingBadge').style.display = ''; try { await remove(ref(fbDB, p)); } catch (e) { alert(T('err_delete') + e.message); } document.getElementById('savingBadge').style.display = 'none'; }
+
+    window.toggleApiServer = async (server, enable) => {
+      if (enable) await saveData(`apiConfig/allowedServers/${server}`, true);
+      else await removeData(`apiConfig/allowedServers/${server}`);
+    };
+
+    const _WORKER_URL = 'https://alliance-tracker-api.lengochuy1504.workers.dev';
+    function renderApiConfig() {
+      const servers = _sortServers(Object.keys(DATA));
+      if (!servers.length) return '';
+      const allowed = apiConfig.allowedServers || {};
+      const rows = servers.map(s => {
+        const isOn = !!allowed[s];
+        const url = `${_WORKER_URL}/api/servers/${s}`;
+        const toggle = `<div onclick="toggleApiServer('${s}',${!isOn})" title="${isOn ? 'Tắt' : 'Bật'}" style="width:38px;height:20px;border-radius:10px;background:${isOn ? 'var(--green)' : 'rgba(255,255,255,.15)'};border:1px solid ${isOn ? 'var(--green)' : 'var(--border)'};position:relative;cursor:pointer;flex-shrink:0;transition:background .15s"><div style="position:absolute;top:2px;left:${isOn ? '18px' : '2px'};width:14px;height:14px;border-radius:50%;background:white;transition:left .15s"></div></div>`;
+        const urlBlock = isOn
+          ? `<code style="flex:1;font-size:.7rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${url}">${url}</code>
+             <button class="btn btn-ghost" style="padding:3px 10px;font-size:.75rem;white-space:nowrap" onclick="navigator.clipboard.writeText('${url}').then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='📋',1500)})">📋</button>`
+          : `<span style="font-size:.78rem;color:var(--text-dim);font-style:italic">—</span>`;
+        return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+          ${toggle}
+          <span style="font-family:Arial,sans-serif;font-size:.92rem;color:${isOn ? 'var(--gold)' : 'var(--text-dim)'};width:72px;flex-shrink:0">Server ${s}</span>
+          <div style="flex:1;display:flex;align-items:center;gap:8px;min-width:0">${urlBlock}</div>
+        </div>`;
+      }).join('');
+      return `<div class="panel">
+        <div class="panel-title">🔗 API Access — Chia Sẻ Dữ Liệu</div>
+        <div style="font-size:.82rem;color:var(--text-dim);margin-bottom:12px;line-height:1.7">
+          Bật server để người khác truy cập dữ liệu qua <b style="color:var(--gold)">Cloudflare Worker API</b>.<br>
+          <span style="font-size:.77rem">Server không được bật sẽ trả về <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">403 Forbidden</code></span>
+        </div>
+        <div style="margin-bottom:4px">${rows}</div>
+        <div style="margin-top:12px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.76rem;color:var(--text-dim);line-height:1.9">
+          <b style="color:var(--gold)">Format URL:</b><br>
+          Tất cả ngày: <code style="color:var(--text)">/api/servers/{server}</code><br>
+          Ngày cụ thể: <code style="color:var(--text)">/api/servers/{server}/2026-03-25</code>
+        </div>
+      </div>`;
+    }
 
     window.openLoginModal = () => { document.getElementById('loginEmail').value = ''; document.getElementById('loginPassword').value = ''; document.getElementById('loginError').style.display = 'none'; document.getElementById('loginModal').classList.add('open'); setTimeout(() => document.getElementById('loginEmail').focus(), 100); };
     window.doLogin = async () => { const email = document.getElementById('loginEmail').value.trim(), pw = document.getElementById('loginPassword').value, err = document.getElementById('loginError'), btn = document.getElementById('loginBtn'); if (!email || !pw) { err.textContent = T('login_empty'); err.style.display = ''; return; } btn.textContent = T('login_submitting'); btn.disabled = true; err.style.display = 'none'; try { await signInWithEmailAndPassword(fbAuth, email, pw); } catch (e) { const m = { 'auth/invalid-credential': 'Sai email hoặc mật khẩu!', 'auth/wrong-password': 'Sai email hoặc mật khẩu!', 'auth/user-not-found': 'Email không tồn tại!', 'auth/too-many-requests': 'Quá nhiều lần thử!', 'auth/invalid-email': 'Email không hợp lệ!' }; err.textContent = m[e.code] || 'Đăng nhập thất bại!'; err.style.display = ''; } btn.textContent = T('login_submit'); btn.disabled = false; };
@@ -710,6 +753,7 @@
         }).join('');
       }
       html += `</div><div class="panel"><div class="panel-title">${T('backup_title')}</div><div class="flex-row"><button class="btn btn-ghost" onclick="exportData()">${T('backup_export_btn')}</button></div><div style="font-size:.8rem;color:var(--text-dim);margin-top:8px">${T('backup_desc')}</div><div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)"><button class="btn btn-danger" onclick="clearAll()">${T('backup_clear_btn')}</button></div></div>`;
+      html += renderApiConfig();
       document.getElementById('tab-manage').innerHTML = html;
     }
     window.deleteDate = async (s, d) => { if (!confirm(T('confirm_delete_date')(s, fmtDate(d)))) return; await removeData(`servers/${s}/${d}`); if (curServer === s && curDate === d) curDate = null; };
