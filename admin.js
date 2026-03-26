@@ -645,7 +645,7 @@
             <button class="btn btn-ghost" style="padding:5px 14px;font-size:.8rem;color:var(--text-dim)" onclick="clearImportLog()">🗑 Xóa</button>
           </div>
         </div>
-        <div id="importLogWrap"></div>
+        <div id="importLogWrap" style="max-height:320px;overflow-y:auto"></div>
       </div>`;
       _renderImportLog();
     }
