@@ -34,11 +34,10 @@ Trả về: Danh sách người chơi của server 174 ngày 25/03/2026.
 | kill        | Tiêu diệt          |
 | dead        | Tử trận            |
 | heal        | Chữa lính          |
-| goldSpend   | Vàng tiêu          |
-| woodSpend   | Gỗ tiêu            |
-| stoneSpend  | Đá tiêu            |
-| manaSpend   | Mana tiêu          |
-| gemSpend    | Gem tiêu           |
+| pvpInfantry | PvP Bộ binh        |
+| pvpCavalry  | PvP Kỵ binh        |
+| pvpArcher   | PvP Cung thủ       |
+| pvpMagic    | PvP Pháp sư        |
 | goldGather  | Vàng thu           |
 | woodGather  | Gỗ thu             |
 | stoneGather | Đá thu             |

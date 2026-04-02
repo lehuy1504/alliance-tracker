@@ -32,10 +32,10 @@
     const getCmpFixed = () => [
       { k: 'dm', l: T('col_merit') }, { k: 'merit_rate_calc', l: T('excel_merit_rate_calc'), pct: true },
       { k: 'dk', l: T('col_kill') }, { k: 'dh', l: T('col_heal') },
-      { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dn', l: T('col_mana_spend') },
+      { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dpi', l: T('col_pvp_infantry') },
     ];
     const getCmpExtra = () => [
-      { k: 'dgs', l: T('col_gold_spend') }, { k: 'dws', l: T('col_wood_spend') }, { k: 'dss', l: T('col_stone_spend') }, { k: 'dges', l: T('col_gem_spend') },
+      { k: 'dpc', l: T('col_pvp_cavalry') }, { k: 'dpa', l: T('col_pvp_archer') }, { k: 'dpm', l: T('col_pvp_magic') },
       { k: 'dgg', l: T('col_gold_gather') }, { k: 'dwg', l: T('col_wood_gather') }, { k: 'dsg', l: T('col_stone_gather') }, { k: 'dmg', l: T('col_mana_gather') }, { k: 'dgeg', l: T('col_gem_gather') },
     ];
     const getTop10Cols = () => [
@@ -43,15 +43,15 @@
     ];
     const getDiffSortOpts = () => [
       { v: 'dm', l: T('col_merit') }, { v: 'merit_rate_calc', l: T('excel_merit_rate_calc') }, { v: 'dp', l: T('col_power') }, { v: 'dk', l: T('col_kill') },
-      { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') }, { v: 'dn', l: T('col_mana_spend') },
-      { v: 'dgs', l: T('col_gold_spend') }, { v: 'dws', l: T('col_wood_spend') }, { v: 'dss', l: T('col_stone_spend') },
-      { v: 'dges', l: T('col_gem_spend') }, { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
+      { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') },
+      { v: 'dpi', l: T('col_pvp_infantry') }, { v: 'dpc', l: T('col_pvp_cavalry') }, { v: 'dpa', l: T('col_pvp_archer') }, { v: 'dpm', l: T('col_pvp_magic') },
+      { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
       { v: 'dsg', l: T('col_stone_gather') }, { v: 'dmg', l: T('col_mana_gather') }, { v: 'dgeg', l: T('col_gem_gather') },
     ];
     const getTop10Metas = () => [
       { v: 'dm', l: T('top10_merit'), field: 'merit' }, { v: 'dk', l: T('top10_kill'), field: 'kill' },
       { v: 'dh', l: T('top10_heal'), field: 'heal' }, { v: 'dd', l: T('top10_dead'), field: 'dead' },
-      { v: 'dp', l: T('top10_power'), field: 'power' }, { v: 'dn', l: T('top10_mana'), field: 'manaSpend' },
+      { v: 'dp', l: T('top10_power'), field: 'power' },
       { v: 'dmg', l: T('top10_mana_gather'), field: 'manaGather' },
     ];
     const getDiffSections = () => [
@@ -59,17 +59,17 @@
         [T('field_merit'), 'merit'], [T('field_merit_rate'), 'meritRate', true],
         [T('excel_merit_rate_calc'), null, false, (a, b) => { const pm = b.powerMax || a.powerMax; if (!pm) return { va: 0, vb: 0, diff: 0 }; const va = Math.round((a.merit || 0) / pm * 10000) / 100; const vb = Math.round((b.merit || 0) / pm * 10000) / 100; return { va, vb, diff: +((vb - va).toFixed(2)) }; }],
         [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
-      { t: T('section_spend'), fields: [[T('field_gold'), 'goldSpend'], [T('field_wood'), 'woodSpend'], [T('field_stone'), 'stoneSpend'], [T('field_mana'), 'manaSpend'], [T('field_gem'), 'gemSpend']] },
+      { t: T('section_pvp'), fields: [[T('field_infantry'), 'pvpInfantry'], [T('field_cavalry'), 'pvpCavalry'], [T('field_archer'), 'pvpArcher'], [T('field_magic'), 'pvpMagic']] },
       { t: T('section_gather'), fields: [[T('field_gold'), 'goldGather'], [T('field_wood'), 'woodGather'], [T('field_stone'), 'stoneGather'], [T('field_mana'), 'manaGather'], [T('field_gem'), 'gemGather']] },
     ];
 
     const getAllianceFixed = () => [
       { k: 'power', l: T('col_power') }, { k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') },
-      { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') },
+      { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') },
     ];
     const getAllianceExtra = () => [
-      { k: 'goldSpend', l: T('col_gold_spend') }, { k: 'woodSpend', l: T('col_wood_spend') },
-      { k: 'stoneSpend', l: T('col_stone_spend') }, { k: 'gemSpend', l: T('col_gem_spend') },
+      { k: 'pvpInfantry', l: T('col_pvp_infantry') }, { k: 'pvpCavalry', l: T('col_pvp_cavalry') },
+      { k: 'pvpArcher', l: T('col_pvp_archer') }, { k: 'pvpMagic', l: T('col_pvp_magic') },
       { k: 'goldGather', l: T('col_gold_gather') }, { k: 'woodGather', l: T('col_wood_gather') },
       { k: 'stoneGather', l: T('col_stone_gather') }, { k: 'manaGather', l: T('col_mana_gather') }, { k: 'gemGather', l: T('col_gem_gather') },
     ];
@@ -266,7 +266,7 @@
     function buildRows(filtered, q) {
       const fmt = numFmt === 'short' ? fmtNum : fmtFull;
       if (!filtered.length) return `<tr class="no-results"><td colspan="11">${T('not_found_row')}</td></tr>`;
-      return filtered.map((r, i) => { const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1; const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : ''; return `<tr><td class="rank ${rc}">${medal}</td><td>${r.id}</td><td class="left name" onclick="showPlayerDetail('${r.id}',false)">${hl(r.name, q)}</td><td class="left ally">[${hl(r.alliance, q)}]</td><td>${fmt(r.merit)}</td><td class="rate">${r.meritRate}%</td><td>${fmt(r.power)}</td><td>${fmt(r.kill)}</td><td>${fmt(r.dead)}</td><td>${fmt(r.heal)}</td><td>${fmt(r.manaSpend)}</td></tr>`; }).join('');
+      return filtered.map((r, i) => { const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1; const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : ''; return `<tr><td class="rank ${rc}">${medal}</td><td>${r.id}</td><td class="left name" onclick="showPlayerDetail('${r.id}',false)">${hl(r.name, q)}</td><td class="left ally">[${hl(r.alliance, q)}]</td><td>${fmt(r.merit)}</td><td class="rate">${r.meritRate}%</td><td>${fmt(r.power)}</td><td>${fmt(r.kill)}</td><td>${fmt(r.dead)}</td><td>${fmt(r.heal)}</td><td>${fmt(r.pvpInfantry)}</td></tr>`; }).join('');
     }
 
     function renderView() {
@@ -303,12 +303,12 @@
       if (curServer && dates.length) {
         html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}</div>`).join('')}</div></div>`;
         if (rows.length) {
-          const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
+          const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
-          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
+          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div></div>`;
           html += _buildViewCharts(rows);
         }
-        const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') }];
+        const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'pvpInfantry', l: T('col_pvp_infantry') }];
         const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]);
         const q = searchQuery.trim(); const filtered = filterRows(sorted); const isOn = !!q;
         const badge = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')}`) : `<b>${sorted.length}</b> ${T('players_count')}`;
@@ -361,7 +361,7 @@
       document.getElementById('pModalSub').textContent = `[${r.alliance}] · ID: ${r.id}`;
       const secs = [
         { t: T('section_battle'), rows: [['ID', r.id], [T('field_alliance'), r.alliance], [T('field_merit'), fmtFull(r.merit)], [T('field_merit_rate'), r.meritRate + '%'], [T('field_power'), fmtFull(r.power)], [T('field_power_max'), fmtFull(r.powerMax)], [T('field_kill'), fmtFull(r.kill)], [T('field_dead'), fmtFull(r.dead)], [T('field_heal'), fmtFull(r.heal)]] },
-        { t: T('section_spend'), rows: [[T('field_gold'), fmtFull(r.goldSpend)], [T('field_wood'), fmtFull(r.woodSpend)], [T('field_stone'), fmtFull(r.stoneSpend)], [T('field_mana'), fmtFull(r.manaSpend)], [T('field_gem'), fmtFull(r.gemSpend)]] },
+        { t: T('section_pvp'), rows: [[T('field_infantry'), fmtFull(r.pvpInfantry)], [T('field_cavalry'), fmtFull(r.pvpCavalry)], [T('field_archer'), fmtFull(r.pvpArcher)], [T('field_magic'), fmtFull(r.pvpMagic)]] },
         { t: T('section_gather'), rows: [[T('field_gold'), fmtFull(r.goldGather)], [T('field_wood'), fmtFull(r.woodGather)], [T('field_stone'), fmtFull(r.stoneGather)], [T('field_mana'), fmtFull(r.manaGather)], [T('field_gem'), fmtFull(r.gemGather)]] }
       ];
       document.getElementById('pModalBody').innerHTML = secs.map(sec => `<div class="detail-sec"><div class="detail-sec-title">${sec.t}</div>${sec.rows.map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}</div>`).join('');
@@ -381,9 +381,9 @@
           merit_before: g(a, 'merit'), merit_after: g(b, 'merit'),
           merit_rate_calc: b.powerMax ? Math.round((g(b, 'merit') - g(a, 'merit')) / b.powerMax * 10000) / 100 : 0,
           dm: g(b, 'merit') - g(a, 'merit'), dp: g(b, 'power') - g(a, 'power'), dk: g(b, 'kill') - g(a, 'kill'),
-          dd: g(b, 'dead') - g(a, 'dead'), dh: g(b, 'heal') - g(a, 'heal'), dn: g(b, 'manaSpend') - g(a, 'manaSpend'),
-          dgs: g(b, 'goldSpend') - g(a, 'goldSpend'), dws: g(b, 'woodSpend') - g(a, 'woodSpend'),
-          dss: g(b, 'stoneSpend') - g(a, 'stoneSpend'), dges: g(b, 'gemSpend') - g(a, 'gemSpend'),
+          dd: g(b, 'dead') - g(a, 'dead'), dh: g(b, 'heal') - g(a, 'heal'),
+          dpi: g(b, 'pvpInfantry') - g(a, 'pvpInfantry'), dpc: g(b, 'pvpCavalry') - g(a, 'pvpCavalry'),
+          dpa: g(b, 'pvpArcher') - g(a, 'pvpArcher'), dpm: g(b, 'pvpMagic') - g(a, 'pvpMagic'),
           dgg: g(b, 'goldGather') - g(a, 'goldGather'), dwg: g(b, 'woodGather') - g(a, 'woodGather'),
           dsg: g(b, 'stoneGather') - g(a, 'stoneGather'), dmg: g(b, 'manaGather') - g(a, 'manaGather'),
           dgeg: g(b, 'gemGather') - g(a, 'gemGather'),
@@ -432,7 +432,7 @@
       const r1 = DATA[cmpSrv]?.[cmpD1] || [], r2 = DATA[cmpSrv]?.[cmpD2] || [];
       _cmpDiffs = computeDiffs(r1, r2);
 
-      const totMetrics = [{ k: 'merit', l: T('col_merit'), acc: 'var(--purple)' }, { k: 'power', l: T('col_power'), acc: 'var(--gold)' }, { k: 'kill', l: T('col_kill'), acc: 'var(--red)' }, { k: 'dead', l: T('col_dead'), acc: 'var(--text-dim)' }, { k: 'heal', l: T('col_heal'), acc: 'var(--green)' }, { k: 'manaSpend', l: T('col_mana_spend'), acc: 'var(--blue)' }];
+      const totMetrics = [{ k: 'merit', l: T('col_merit'), acc: 'var(--purple)' }, { k: 'power', l: T('col_power'), acc: 'var(--gold)' }, { k: 'kill', l: T('col_kill'), acc: 'var(--red)' }, { k: 'dead', l: T('col_dead'), acc: 'var(--text-dim)' }, { k: 'heal', l: T('col_heal'), acc: 'var(--green)' }];
       const tot = (arr, k) => arr.reduce((s, r) => s + (r[k] || 0), 0);
       let html = `<div class="flex-row" style="margin-bottom:14px">
         <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">${T('cmp_date_before_short')}:</span> <b>${fmtDate(cmpD1)}</b> — ${r1.length} ${T('players_count')}</div>
@@ -613,7 +613,7 @@
       return candidates.length ? candidates[candidates.length - 1] : null;
     }
 
-    const _DELTA_KEYS = ['power', 'merit', 'kill', 'dead', 'heal', 'manaSpend', 'goldSpend', 'woodSpend', 'stoneSpend', 'gemSpend', 'goldGather', 'woodGather', 'stoneGather', 'manaGather', 'gemGather'];
+    const _DELTA_KEYS = ['power', 'merit', 'kill', 'dead', 'heal', 'pvpInfantry', 'pvpCavalry', 'pvpArcher', 'pvpMagic', 'goldGather', 'woodGather', 'stoneGather', 'manaGather', 'gemGather'];
 
     function _getAllianceRows() {
       const servers = _sortServers(Object.keys(DATA));
@@ -682,11 +682,11 @@
       const map = {}, allyCount = {};
       allRows.forEach(r => {
         const s = r._server;
-        if (!map[s]) { map[s] = { _server: s, power: 0, merit: 0, kill: 0, dead: 0, heal: 0, manaSpend: 0, goldSpend: 0, woodSpend: 0, stoneSpend: 0, gemSpend: 0, goldGather: 0, woodGather: 0, stoneGather: 0, manaGather: 0, gemGather: 0, _playerCount: 0 }; allyCount[s] = {}; }
+        if (!map[s]) { map[s] = { _server: s, power: 0, merit: 0, kill: 0, dead: 0, heal: 0, pvpInfantry: 0, pvpCavalry: 0, pvpArcher: 0, pvpMagic: 0, goldGather: 0, woodGather: 0, stoneGather: 0, manaGather: 0, gemGather: 0, _playerCount: 0 }; allyCount[s] = {}; }
         const m = map[s];
         m.power += r.power || 0; m.merit += r.merit || 0; m.kill += r.kill || 0; m.dead += r.dead || 0;
-        m.heal += r.heal || 0; m.manaSpend += r.manaSpend || 0; m.goldSpend += r.goldSpend || 0;
-        m.woodSpend += r.woodSpend || 0; m.stoneSpend += r.stoneSpend || 0; m.gemSpend += r.gemSpend || 0;
+        m.heal += r.heal || 0; m.pvpInfantry += r.pvpInfantry || 0; m.pvpCavalry += r.pvpCavalry || 0;
+        m.pvpArcher += r.pvpArcher || 0; m.pvpMagic += r.pvpMagic || 0;
         m.goldGather += r.goldGather || 0; m.woodGather += r.woodGather || 0; m.stoneGather += r.stoneGather || 0;
         m.manaGather += r.manaGather || 0; m.gemGather += r.gemGather || 0; m._playerCount++;
         if (r.alliance) allyCount[s][r.alliance] = (allyCount[s][r.alliance] || 0) + 1;
@@ -779,7 +779,6 @@
       if (allRows.length) {
         const tP = allRows.reduce((s, r) => s + (r.power || 0), 0), tM = allRows.reduce((s, r) => s + (r.merit || 0), 0);
         const tK = allRows.reduce((s, r) => s + (r.kill || 0), 0), tH = allRows.reduce((s, r) => s + (r.heal || 0), 0);
-        const tN = allRows.reduce((s, r) => s + (r.manaSpend || 0), 0);
         const al = [...new Set(allRows.map(r => r.alliance))];
         const fmtStat = n => isRange ? (n >= 0 ? `▲ ${fmtNum(n)}` : `▼ ${fmtNum(Math.abs(n))}`) : fmtNum(n);
         html += `<div class="stats-row">
@@ -788,7 +787,6 @@
           <div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtStat(tM)}</div></div>
           <div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtStat(tK)}</div></div>
           <div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtStat(tH)}</div></div>
-          <div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtStat(tN)}</div></div>
         </div>`;
       }
 
@@ -951,11 +949,10 @@
       { k: 'dk',    label: '+/- ' + T('col_kill'),                field: 'dk',    w: 18, num: true, def: true },
       { k: 'dd',    label: '+/- ' + T('col_dead'),                field: 'dd',    w: 15, num: true, def: true },
       { k: 'dh',    label: '+/- ' + T('col_heal'),                field: 'dh',    w: 18, num: true, def: true },
-      { k: 'dn',    label: '+/- ' + T('col_mana_spend'),          field: 'dn',    w: 18, num: true, def: true },
-      { k: 'dgs',   label: '+/- ' + T('col_gold_spend'),          field: 'dgs',   w: 18, num: true, def: false },
-      { k: 'dws',   label: '+/- ' + T('col_wood_spend'),          field: 'dws',   w: 18, num: true, def: false },
-      { k: 'dss',   label: '+/- ' + T('col_stone_spend'),         field: 'dss',   w: 18, num: true, def: false },
-      { k: 'dges',  label: '+/- ' + T('col_gem_spend'),           field: 'dges',  w: 15, num: true, def: false },
+      { k: 'dpi',   label: '+/- ' + T('col_pvp_infantry'),         field: 'dpi',   w: 18, num: true, def: false },
+      { k: 'dpc',   label: '+/- ' + T('col_pvp_cavalry'),         field: 'dpc',   w: 18, num: true, def: false },
+      { k: 'dpa',   label: '+/- ' + T('col_pvp_archer'),          field: 'dpa',   w: 18, num: true, def: false },
+      { k: 'dpm',   label: '+/- ' + T('col_pvp_magic'),           field: 'dpm',   w: 18, num: true, def: false },
       { k: 'dgg',   label: '+/- ' + T('col_gold_gather'),         field: 'dgg',   w: 18, num: true, def: false },
       { k: 'dwg',   label: '+/- ' + T('col_wood_gather'),         field: 'dwg',   w: 18, num: true, def: false },
       { k: 'dsg',   label: '+/- ' + T('col_stone_gather'),        field: 'dsg',   w: 18, num: true, def: false },
@@ -1200,11 +1197,10 @@
       { k: 'kill',        label: T('col_kill'),              field: 'kill',        w: 18,  num: true,  def: true  },
       { k: 'dead',        label: T('col_dead'),              field: 'dead',        w: 15,  num: true,  def: true  },
       { k: 'heal',        label: T('col_heal'),              field: 'heal',        w: 18,  num: true,  def: true  },
-      { k: 'manaSpend',   label: T('col_mana_spend'),        field: 'manaSpend',   w: 18,  num: true,  def: true  },
-      { k: 'goldSpend',   label: T('col_gold_spend'),        field: 'goldSpend',   w: 18,  num: true,  def: false },
-      { k: 'woodSpend',   label: T('col_wood_spend'),        field: 'woodSpend',   w: 18,  num: true,  def: false },
-      { k: 'stoneSpend',  label: T('col_stone_spend'),       field: 'stoneSpend',  w: 18,  num: true,  def: false },
-      { k: 'gemSpend',    label: T('col_gem_spend'),         field: 'gemSpend',    w: 15,  num: true,  def: false },
+      { k: 'pvpInfantry', label: T('col_pvp_infantry'),       field: 'pvpInfantry', w: 18,  num: true,  def: false },
+      { k: 'pvpCavalry',  label: T('col_pvp_cavalry'),       field: 'pvpCavalry',  w: 18,  num: true,  def: false },
+      { k: 'pvpArcher',   label: T('col_pvp_archer'),        field: 'pvpArcher',   w: 18,  num: true,  def: false },
+      { k: 'pvpMagic',    label: T('col_pvp_magic'),         field: 'pvpMagic',    w: 18,  num: true,  def: false },
       { k: 'goldGather',  label: T('col_gold_gather'),       field: 'goldGather',  w: 18,  num: true,  def: false },
       { k: 'woodGather',  label: T('col_wood_gather'),       field: 'woodGather',  w: 18,  num: true,  def: false },
       { k: 'stoneGather', label: T('col_stone_gather'),      field: 'stoneGather', w: 18,  num: true,  def: false },
@@ -1445,7 +1441,7 @@
       return `<div class="charts-row">
         <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_power_dist')}</div>${donut}</div>
         <div class="chart-card"><div class="chart-title">🏆 ${T('chart_top_merit')}</div>${barChart('merit','#a78bfa')}</div>
-        <div class="chart-card"><div class="chart-title">💧 ${T('chart_top_mana')}</div>${barChart('manaSpend','#00b4d8')}</div>
+        <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_top_kill')}</div>${barChart('kill','#00b4d8')}</div>
       </div>`;
     }
 

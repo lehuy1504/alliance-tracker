@@ -33,10 +33,10 @@
     // ══════════════════════════════════════════════
     const getCmpFixed = () => [
       { k: 'dm', l: T('col_merit') }, { k: 'dk', l: T('col_kill') }, { k: 'dh', l: T('col_heal') },
-      { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dn', l: T('col_mana_spend') },
+      { k: 'dd', l: T('col_dead') }, { k: 'dp', l: T('col_power') }, { k: 'dpi', l: T('col_pvp_infantry') },
     ];
     const getCmpExtra = () => [
-      { k: 'dgs', l: T('col_gold_spend') }, { k: 'dws', l: T('col_wood_spend') }, { k: 'dss', l: T('col_stone_spend') }, { k: 'dges', l: T('col_gem_spend') },
+      { k: 'dpc', l: T('col_pvp_cavalry') }, { k: 'dpa', l: T('col_pvp_archer') }, { k: 'dpm', l: T('col_pvp_magic') },
       { k: 'dgg', l: T('col_gold_gather') }, { k: 'dwg', l: T('col_wood_gather') }, { k: 'dsg', l: T('col_stone_gather') }, { k: 'dmg', l: T('col_mana_gather') }, { k: 'dgeg', l: T('col_gem_gather') },
     ];
     const getTop10Cols = () => [
@@ -44,20 +44,20 @@
     ];
     const getDiffSortOpts = () => [
       { v: 'dm', l: T('col_merit') }, { v: 'dp', l: T('col_power') }, { v: 'dk', l: T('col_kill') },
-      { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') }, { v: 'dn', l: T('col_mana_spend') },
-      { v: 'dgs', l: T('col_gold_spend') }, { v: 'dws', l: T('col_wood_spend') }, { v: 'dss', l: T('col_stone_spend') },
-      { v: 'dges', l: T('col_gem_spend') }, { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
+      { v: 'dd', l: T('col_dead') }, { v: 'dh', l: T('col_heal') },
+      { v: 'dpi', l: T('col_pvp_infantry') }, { v: 'dpc', l: T('col_pvp_cavalry') }, { v: 'dpa', l: T('col_pvp_archer') }, { v: 'dpm', l: T('col_pvp_magic') },
+      { v: 'dgg', l: T('col_gold_gather') }, { v: 'dwg', l: T('col_wood_gather') },
       { v: 'dsg', l: T('col_stone_gather') }, { v: 'dmg', l: T('col_mana_gather') }, { v: 'dgeg', l: T('col_gem_gather') },
     ];
     const getTop10Metas = () => [
       { v: 'dm', l: T('top10_merit'), field: 'merit' }, { v: 'dk', l: T('top10_kill'), field: 'kill' },
       { v: 'dh', l: T('top10_heal'), field: 'heal' }, { v: 'dd', l: T('top10_dead'), field: 'dead' },
-      { v: 'dp', l: T('top10_power'), field: 'power' }, { v: 'dn', l: T('top10_mana'), field: 'manaSpend' },
+      { v: 'dp', l: T('top10_power'), field: 'power' },
       { v: 'dmg', l: T('top10_mana_gather'), field: 'manaGather' },
     ];
     const getDiffSections = () => [
       { t: T('section_battle'), fields: [[T('field_merit'), 'merit'], [T('field_merit_rate'), 'meritRate', true], [T('field_power'), 'power'], [T('field_power_max'), 'powerMax'], [T('field_kill'), 'kill'], [T('field_dead'), 'dead'], [T('field_heal'), 'heal']] },
-      { t: T('section_spend'), fields: [[T('field_gold'), 'goldSpend'], [T('field_wood'), 'woodSpend'], [T('field_stone'), 'stoneSpend'], [T('field_mana'), 'manaSpend'], [T('field_gem'), 'gemSpend']] },
+      { t: T('section_pvp'), fields: [[T('field_infantry'), 'pvpInfantry'], [T('field_cavalry'), 'pvpCavalry'], [T('field_archer'), 'pvpArcher'], [T('field_magic'), 'pvpMagic']] },
       { t: T('section_gather'), fields: [[T('field_gold'), 'goldGather'], [T('field_wood'), 'woodGather'], [T('field_stone'), 'stoneGather'], [T('field_mana'), 'manaGather'], [T('field_gem'), 'gemGather']] },
     ];
 
@@ -259,11 +259,11 @@
     window.showTab = name => { activeTab = name; document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none'); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); const el = document.getElementById('tab-' + name); if (el) el.style.display = ''; document.querySelectorAll('.tab-btn').forEach(el => { if (el.dataset.tab === name) el.classList.add('active'); }); renderTab(name); };
 
     function parseRaw(raw) {
-      const sm = raw.match(/Thông tin server[:\s]+(\d+)/i); if (!sm) throw new Error('Không tìm thấy số server');
-      const dm = raw.match(/Dữ liệu được lấy lúc[:\s]+(\d+)\/(\d+)\/(\d+)/i); if (!dm) throw new Error('Không tìm thấy ngày');
+      const sm = raw.match(/(?:Thông tin server|Server)[:\s]+(\d+)/i); if (!sm) throw new Error('Không tìm thấy số server');
+      const dm = raw.match(/(?:Dữ liệu được lấy lúc|Time)[:\s]+(\d+)\/(\d+)\/(\d+)/i); if (!dm) throw new Error('Không tìm thấy ngày');
       const dateKey = `${dm[3]}-${dm[2].padStart(2, '0')}-${dm[1].padStart(2, '0')}`;
       const rows = []; const re = /\{([^}]+)\}/g; let m;
-      while ((m = re.exec(raw)) !== null) { const p = m[1].split(',').map(s => s.trim().replace(/^"|"$/g, '')); if (p.length < 20) continue; const n = i => { const x = parseFloat(p[i].replace(/[^0-9.-]/g, '')); return isNaN(x) ? 0 : x; }; const s = i => p[i].replace(/"/g, '').trim(); rows.push({ id: s(0), name: s(1), alliance: s(2), merit: n(3), power: n(4), powerMax: n(5), meritRate: n(6), dead: n(7), heal: n(8), kill: n(9), goldSpend: n(10), woodSpend: n(11), stoneSpend: n(12), manaSpend: n(13), gemSpend: n(14), goldGather: n(15), woodGather: n(16), stoneGather: n(17), manaGather: n(18), gemGather: n(19) }); }
+      while ((m = re.exec(raw)) !== null) { const p = m[1].split(',').map(s => s.trim().replace(/^"|"$/g, '')); if (p.length < 19) continue; const n = i => { const x = parseFloat(p[i].replace(/[^0-9.-]/g, '')); return isNaN(x) ? 0 : x; }; const s = i => p[i].replace(/"/g, '').trim(); rows.push({ id: s(0), name: s(1), alliance: s(2), merit: n(3), power: n(4), powerMax: n(5), meritRate: n(6), dead: n(7), heal: n(8), kill: n(9), pvpInfantry: n(10), pvpCavalry: n(11), pvpArcher: n(12), pvpMagic: n(13), goldGather: n(14), woodGather: n(15), stoneGather: n(16), manaGather: n(17), gemGather: n(18) }); }
       if (!rows.length) throw new Error('Không tìm thấy dữ liệu người chơi');
       return { server: sm[1], dateKey, rows };
     }
@@ -275,7 +275,7 @@
     function buildRows(filtered, q) {
       const fmt = numFmt === 'short' ? fmtNum : fmtFull;
       if (!filtered.length) return `<tr class="no-results"><td colspan="11">${T('not_found_row')}</td></tr>`;
-      return filtered.map((r, i) => { const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1; const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : ''; return `<tr><td class="rank ${rc}">${medal}</td><td>${r.id}</td><td class="left name" onclick="showPlayerDetail('${r.id}',false)">${hl(r.name, q)}</td><td class="left ally">[${hl(r.alliance, q)}]</td><td>${fmt(r.merit)}</td><td class="rate">${r.meritRate}%</td><td>${fmt(r.power)}</td><td>${fmt(r.kill)}</td><td>${fmt(r.dead)}</td><td>${fmt(r.heal)}</td><td>${fmt(r.manaSpend)}</td></tr>`; }).join('');
+      return filtered.map((r, i) => { const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1; const rc = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : ''; return `<tr><td class="rank ${rc}">${medal}</td><td>${r.id}</td><td class="left name" onclick="showPlayerDetail('${r.id}',false)">${hl(r.name, q)}</td><td class="left ally">[${hl(r.alliance, q)}]</td><td>${fmt(r.merit)}</td><td class="rate">${r.meritRate}%</td><td>${fmt(r.power)}</td><td>${fmt(r.kill)}</td><td>${fmt(r.dead)}</td><td>${fmt(r.heal)}</td><td>${fmt(r.pvpInfantry)}</td></tr>`; }).join('');
     }
 
     function renderView() {
@@ -291,12 +291,12 @@
       if (curServer && dates.length) {
         html += `<div class="panel"><div class="panel-title">${T('select_date')}</div><div class="date-list">${dates.map(d => `<div class="chip ${d === curDate ? 'active' : ''}" onclick="selectDate('${d}')">📅 ${fmtDate(d)}${isAdmin ? `<button class="chip-del" onclick="event.stopPropagation();deleteDate('${curServer}','${d}')">✕</button>` : ''}</div>`).join('')}</div></div>`;
         if (rows.length) {
-          const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tN = rows.reduce((s, r) => s + r.manaSpend, 0), tP = rows.reduce((s, r) => s + r.power, 0);
+          const tM = rows.reduce((s, r) => s + r.merit, 0), tK = rows.reduce((s, r) => s + r.kill, 0), tH = rows.reduce((s, r) => s + r.heal, 0), tP = rows.reduce((s, r) => s + r.power, 0);
           const al = [...new Set(rows.map(r => r.alliance))];
-          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div><div class="stat-card" style="--accent:var(--blue)"><div class="stat-label">${T('stat_total_mana')}</div><div class="stat-val">${fmtNum(tN)}</div></div></div>`;
+          html += `<div class="stats-row"><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_players')}</div><div class="stat-val">${rows.length}</div><div class="stat-sub">${al.length} ${T('stat_alliances')}</div></div><div class="stat-card" style="--accent:var(--gold)"><div class="stat-label">${T('stat_total_power')}</div><div class="stat-val">${fmtNum(tP)}</div></div><div class="stat-card" style="--accent:var(--purple)"><div class="stat-label">${T('stat_total_merit')}</div><div class="stat-val">${fmtNum(tM)}</div></div><div class="stat-card" style="--accent:var(--red)"><div class="stat-label">${T('stat_total_kill')}</div><div class="stat-val">${fmtNum(tK)}</div></div><div class="stat-card" style="--accent:var(--green)"><div class="stat-label">${T('stat_total_heal')}</div><div class="stat-val">${fmtNum(tH)}</div></div></div>`;
           html += _buildViewCharts(rows);
         }
-        const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'manaSpend', l: T('col_mana_spend') }];
+        const cols = [{ k: 'merit', l: T('col_merit') }, { k: 'meritRate', l: T('col_merit_rate') }, { k: 'power', l: T('col_power') }, { k: 'kill', l: T('col_kill') }, { k: 'dead', l: T('col_dead') }, { k: 'heal', l: T('col_heal') }, { k: 'pvpInfantry', l: T('col_pvp_infantry') }];
         const sorted = [...rows].sort((a, b) => sortDir === 'desc' ? b[sortCol] - a[sortCol] : a[sortCol] - b[sortCol]);
         const q = searchQuery.trim(); const filtered = filterRows(sorted); const isOn = !!q;
         const badge = isOn ? (filtered.length === 0 ? T('not_found_badge') : `<b>${filtered.length}</b> / ${sorted.length} ${T('players_count')}`) : `<b>${sorted.length}</b> ${T('players_count')}`;
@@ -342,7 +342,7 @@
       document.getElementById('pModalSub').textContent = `[${r.alliance}] · ID: ${r.id}`;
       const secs = [
         { t: T('section_battle'), rows: [['ID', r.id], [T('field_alliance'), r.alliance], [T('field_merit'), fmtFull(r.merit)], [T('field_merit_rate'), r.meritRate + '%'], [T('field_power'), fmtFull(r.power)], [T('field_power_max'), fmtFull(r.powerMax)], [T('field_kill'), fmtFull(r.kill)], [T('field_dead'), fmtFull(r.dead)], [T('field_heal'), fmtFull(r.heal)]] },
-        { t: T('section_spend'), rows: [[T('field_gold'), fmtFull(r.goldSpend)], [T('field_wood'), fmtFull(r.woodSpend)], [T('field_stone'), fmtFull(r.stoneSpend)], [T('field_mana'), fmtFull(r.manaSpend)], [T('field_gem'), fmtFull(r.gemSpend)]] },
+        { t: T('section_pvp'), rows: [[T('field_infantry'), fmtFull(r.pvpInfantry)], [T('field_cavalry'), fmtFull(r.pvpCavalry)], [T('field_archer'), fmtFull(r.pvpArcher)], [T('field_magic'), fmtFull(r.pvpMagic)]] },
         { t: T('section_gather'), rows: [[T('field_gold'), fmtFull(r.goldGather)], [T('field_wood'), fmtFull(r.woodGather)], [T('field_stone'), fmtFull(r.stoneGather)], [T('field_mana'), fmtFull(r.manaGather)], [T('field_gem'), fmtFull(r.gemGather)]] }
       ];
       document.getElementById('pModalBody').innerHTML = secs.map(sec => `<div class="detail-sec"><div class="detail-sec-title">${sec.t}</div>${sec.rows.map(([k, v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('')}</div>`).join('');
@@ -360,9 +360,9 @@
         return {
           id, name: b.name || a.name || id, alliance: b.alliance || a.alliance || '', a, b,
           dm: g(b, 'merit') - g(a, 'merit'), dp: g(b, 'power') - g(a, 'power'), dk: g(b, 'kill') - g(a, 'kill'),
-          dd: g(b, 'dead') - g(a, 'dead'), dh: g(b, 'heal') - g(a, 'heal'), dn: g(b, 'manaSpend') - g(a, 'manaSpend'),
-          dgs: g(b, 'goldSpend') - g(a, 'goldSpend'), dws: g(b, 'woodSpend') - g(a, 'woodSpend'),
-          dss: g(b, 'stoneSpend') - g(a, 'stoneSpend'), dges: g(b, 'gemSpend') - g(a, 'gemSpend'),
+          dd: g(b, 'dead') - g(a, 'dead'), dh: g(b, 'heal') - g(a, 'heal'),
+          dpi: g(b, 'pvpInfantry') - g(a, 'pvpInfantry'), dpc: g(b, 'pvpCavalry') - g(a, 'pvpCavalry'),
+          dpa: g(b, 'pvpArcher') - g(a, 'pvpArcher'), dpm: g(b, 'pvpMagic') - g(a, 'pvpMagic'),
           dgg: g(b, 'goldGather') - g(a, 'goldGather'), dwg: g(b, 'woodGather') - g(a, 'woodGather'),
           dsg: g(b, 'stoneGather') - g(a, 'stoneGather'), dmg: g(b, 'manaGather') - g(a, 'manaGather'),
           dgeg: g(b, 'gemGather') - g(a, 'gemGather'),
@@ -411,7 +411,7 @@
       const r1 = DATA[cmpSrv]?.[cmpD1] || [], r2 = DATA[cmpSrv]?.[cmpD2] || [];
       _cmpDiffs = computeDiffs(r1, r2);
 
-      const totMetrics = [{ k: 'merit', l: T('col_merit'), acc: 'var(--purple)' }, { k: 'power', l: T('col_power'), acc: 'var(--gold)' }, { k: 'kill', l: T('col_kill'), acc: 'var(--red)' }, { k: 'dead', l: T('col_dead'), acc: 'var(--text-dim)' }, { k: 'heal', l: T('col_heal'), acc: 'var(--green)' }, { k: 'manaSpend', l: T('col_mana_spend'), acc: 'var(--blue)' }];
+      const totMetrics = [{ k: 'merit', l: T('col_merit'), acc: 'var(--purple)' }, { k: 'power', l: T('col_power'), acc: 'var(--gold)' }, { k: 'kill', l: T('col_kill'), acc: 'var(--red)' }, { k: 'dead', l: T('col_dead'), acc: 'var(--text-dim)' }, { k: 'heal', l: T('col_heal'), acc: 'var(--green)' }];
       const tot = (arr, k) => arr.reduce((s, r) => s + (r[k] || 0), 0);
       let html = `<div class="flex-row" style="margin-bottom:14px">
         <div style="padding:7px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:.83rem">📅 <span style="color:var(--text-dim)">${T('cmp_date_before_short')}:</span> <b>${fmtDate(cmpD1)}</b> — ${r1.length} ${T('players_count')}</div>
@@ -616,7 +616,7 @@
       <div class="panel">
         <div class="panel-title">📦 Nhập Nhiều Server Cùng Lúc</div>
         <div style="font-size:.82rem;color:var(--text-dim);margin-bottom:10px;line-height:1.7">Dán dữ liệu nhiều server vào đây — các server cách nhau bằng dòng <code style="background:var(--bg3);padding:1px 6px;border-radius:4px;color:var(--gold)">===...</code></div>
-        <textarea id="batchImportTxt" style="min-height:200px" placeholder="=================================&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 19/03/2026 17:27&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }&#10;=================================&#10;Thông tin server: 175&#10;Dữ liệu được lấy lúc: 19/03/2026 17:30&#10;{ 1234567, &quot;Other&quot;, &quot;ABX&quot;, ... }"></textarea>
+        <textarea id="batchImportTxt" style="min-height:200px" placeholder="===================================================&#10;Server: 174&#10;Time: 19/03/2026 17:27&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }&#10;===================================================&#10;Server: 175&#10;Time: 19/03/2026 17:30&#10;{ 1234567, &quot;Other&quot;, &quot;ABX&quot;, ... }"></textarea>
         <div class="flex-row" style="margin-top:12px">
           <button class="btn btn-primary" id="batchImportBtn" onclick="doBatchImport()">⚡ Nhập Tất Cả</button>
           <button class="btn btn-ghost" onclick="document.getElementById('batchImportTxt').value='';document.getElementById('batchImportStatus').className='status'">Xóa</button>
@@ -625,7 +625,7 @@
       </div>
       <div class="panel">
         <div class="panel-title">${T('import_title')}</div>
-        <textarea id="importTxt" placeholder="Dán dữ liệu từ Tabi vào đây...&#10;&#10;Thông tin server: 174&#10;Dữ liệu được lấy lúc: 9/3/2026&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }"></textarea>
+        <textarea id="importTxt" placeholder="Dán dữ liệu vào đây...&#10;&#10;Server: 174&#10;Time: 02/04/2026 9:06&#10;{ 8010298, &quot;Player&quot;, &quot;S2AK&quot;, ... }"></textarea>
         <div style="font-size:.8rem;color:var(--text-dim);margin-top:7px;line-height:1.7"><b style="color:var(--gold)">${T('import_replace_label')}</b> → ${T('import_replace_desc')} &nbsp;·&nbsp; <b style="color:var(--green)">${T('import_new_label')}</b> → ${T('import_new_desc')}</div>
         <div class="flex-row" style="margin-top:12px">
           <button class="btn btn-primary" onclick="doImport()">${T('import_btn')}</button>
@@ -797,7 +797,7 @@
       return `<div class="charts-row">
         <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_power_dist')}</div>${donut}</div>
         <div class="chart-card"><div class="chart-title">🏆 ${T('chart_top_merit')}</div>${barChart('merit','#a78bfa')}</div>
-        <div class="chart-card"><div class="chart-title">💧 ${T('chart_top_mana')}</div>${barChart('manaSpend','#00b4d8')}</div>
+        <div class="chart-card"><div class="chart-title">⚔️ ${T('chart_top_kill')}</div>${barChart('kill','#00b4d8')}</div>
       </div>`;
     }
 
